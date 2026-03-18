@@ -1322,6 +1322,7 @@ bool IRsend::send(const decode_type_t type, const uint8_t *state,
       sendHitachiAc424(state, nbytes);
       break;
 #endif  // SEND_HITACHI_AC424
+/*Todo: add new features for KELON168 */
 #if SEND_KELON168
     case KELON168:
       sendKelon168(state, nbytes);

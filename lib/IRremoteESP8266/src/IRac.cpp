@@ -290,6 +290,11 @@ bool IRac::isProtocolSupported(const decode_type_t protocol) {
 #if SEND_KELON
     case decode_type_t::KELON:
 #endif
+/*Todo: add new feature for KELON168 */
+#if SEND_KELON168
+    case decode_type_t::KELON168:
+#endif
+
 #if SEND_KELVINATOR
     case decode_type_t::KELVINATOR:
 #endif
@@ -1795,8 +1800,40 @@ void IRac::kelon(IRKelonAc *ac, const bool togglePower,
 
   ac->send();
 }
+/*Todo: add new feature for KELON168 */
 #endif  // SEND_KELON
+#if SEND_KELON168
+/// Send a Kelon168 A/C message with the supplied settings.
+/// @param[in, out] ac A Ptr to an IRKelon168Ac object to use.
+/// @param[in] togglePower Whether to toggle the unit's power
+/// @param[in] mode The operation mode setting.
+/// @param[in] dryGrade The dehumidification intensity grade
+/// @param[in] degrees The temperature setting in degrees.
+/// @param[in] fan The speed setting for the fan.
+/// @param[in] toggleSwing Whether to toggle the swing setting
+/// @param[in] superCool Run the device in Super cooling mode.
+/// @param[in] sleep Nr. of minutes for sleep mode. -1 is Off, >= 0 is on
+void IRac::kelon168(IRKelon168Ac *ac, const bool togglePower,
+                     const stdAc::opmode_t mode, const int8_t dryGrade,
+                 const float degrees, const stdAc::fanspeed_t fan,
+                 const bool toggleSwing, const bool superCool,
+                 const int16_t sleep) {
+  ac->begin();
+  ac->setMode(IRKelon168Ac::convertMode(mode));
+  ac->setFan(IRKelon168Ac::convertFan(fan));
+  ac->setTemp(static_cast<uint8_t>(degrees));
+  ac->setSleep(sleep >= 0);
+/*Todo: will be implemented remaining features for KELON168 */
 
+  // ac->setSupercool(superCool);
+  // ac->setDryGrade(dryGrade);
+
+  // ac->setTogglePower(togglePower);
+  // ac->setToggleSwingVertical(toggleSwing);
+
+  ac->send();
+}
+#endif
 #if SEND_KELVINATOR
 /// Send a Kelvinator A/C message with the supplied settings.
 /// @param[in, out] ac A Ptr to an IRKelvinatorAC object to use.
@@ -2962,6 +2999,8 @@ stdAc::state_t IRac::handleToggles(const stdAc::state_t desired,
           result.swingv = stdAc::swingv_t::kOff;  // No change, so no toggle.
         break;
       case decode_type_t::KELON:
+      /*todo: add new features for KELON */
+      case decode_type_t::KELON168:
         if ((desired.swingv == stdAc::swingv_t::kOff) ^
             (prev->swingv == stdAc::swingv_t::kOff))  // It changed, so toggle.
           result.swingv = stdAc::swingv_t::kAuto;
@@ -3419,6 +3458,16 @@ bool IRac::sendAc(const stdAc::state_t desired, const stdAc::state_t *prev) {
       break;
     }
 #endif
+/*Todo: Add feature for KELON168 */
+#if SEND_KELON168
+    case KELON168: {
+      IRKelon168Ac ac(_pin, _inverted, _modulation);
+      kelon168(&ac, send.power, send.mode, 0, send.degrees, send.fanspeed,
+               send.swingv != stdAc::swingv_t::kOff, send.turbo, send.sleep);
+      break;
+    }
+#endif
+
 #if SEND_KELVINATOR
     case KELVINATOR:
     {
@@ -4369,6 +4418,14 @@ String resultAcToString(const decode_results * const result) {
       return ac.toString();
     }
 #endif  // DECODE_KELON
+/*todo: add new features for KELON168 */
+#if DECODE_KELON168
+    case decode_type_t::KELON168: {
+      IRKelon168Ac ac(kGpioUnused);
+      ac.setRaw(result->state);
+      return ac.toString();
+    }
+#endif  // DECODE_KELON168
 #if DECODE_KELVINATOR
     case decode_type_t::KELVINATOR: {
       IRKelvinatorAC ac(kGpioUnused);
@@ -4891,6 +4948,16 @@ bool decodeToState(const decode_results *decode, stdAc::state_t *result,
       break;
     }
 #endif  // DECODE_KELON
+/*todo: add new features for KELON168 */
+#if DECODE_KELON168
+    case decode_type_t::KELON168: {
+      IRKelon168Ac ac(kGpioUnused);
+      ac.setRaw(decode->state);
+      *result = ac.toCommon(prev);
+      break;
+    }
+#endif  // DECODE_KELON168
+
 #if DECODE_KELVINATOR
     case decode_type_t::KELVINATOR: {
       IRKelvinatorAC ac(kGpioUnused);

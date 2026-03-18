@@ -380,10 +380,10 @@ void electra(IRElectraAc *ac,
 /*Todo: add new feature for KELON168 */
 #if SEND_KELON168
 void kelon168(IRKelon168Ac *ac, const bool togglePower,
-                     const stdAc::opmode_t mode, const int8_t dryGrade,
+                     const stdAc::opmode_t mode,
                  const float degrees, const stdAc::fanspeed_t fan,
-                 const bool toggleSwing, const bool superCool,
-                 const int16_t sleep);
+                 const stdAc::swingv_t swingv, const bool turbo, const bool light,
+                 const int16_t sleep, const int16_t clock);
 #endif  // SEND_KELON168
 
 #if SEND_KELVINATOR

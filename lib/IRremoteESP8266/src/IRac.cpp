@@ -1814,22 +1814,22 @@ void IRac::kelon(IRKelonAc *ac, const bool togglePower,
 /// @param[in] superCool Run the device in Super cooling mode.
 /// @param[in] sleep Nr. of minutes for sleep mode. -1 is Off, >= 0 is on
 void IRac::kelon168(IRKelon168Ac *ac, const bool togglePower,
-                     const stdAc::opmode_t mode, const int8_t dryGrade,
+                     const stdAc::opmode_t mode,
                  const float degrees, const stdAc::fanspeed_t fan,
-                 const bool toggleSwing, const bool superCool,
-                 const int16_t sleep) {
+                 const stdAc::swingv_t swingv, const bool turbo, const bool light,
+                 const int16_t sleep, const int16_t clock) {
   ac->begin();
+  /*Todo: will be implemented remaining features for KELON168 */
+  
+  ac->setPower(togglePower);
   ac->setMode(IRKelon168Ac::convertMode(mode));
   ac->setFan(IRKelon168Ac::convertFan(fan));
   ac->setTemp(static_cast<uint8_t>(degrees));
   ac->setSleep(sleep >= 0);
-/*Todo: will be implemented remaining features for KELON168 */
-
-  // ac->setSupercool(superCool);
-  // ac->setDryGrade(dryGrade);
-
-  // ac->setTogglePower(togglePower);
-  // ac->setToggleSwingVertical(toggleSwing);
+  ac->setSuper(turbo);
+  ac->setLight(light);
+  ac->setSwing(swingv != stdAc::swingv_t::kOff);
+  if (clock >= 0) ac->setClock(clock);
 
   ac->send();
 }
@@ -3462,8 +3462,8 @@ bool IRac::sendAc(const stdAc::state_t desired, const stdAc::state_t *prev) {
 #if SEND_KELON168
     case KELON168: {
       IRKelon168Ac ac(_pin, _inverted, _modulation);
-      kelon168(&ac, send.power, send.mode, 0, send.degrees, send.fanspeed,
-               send.swingv != stdAc::swingv_t::kOff, send.turbo, send.sleep);
+      kelon168(&ac, send.power, send.mode,next.degrees, send.fanspeed,
+              send.swingv, send.turbo, send.light, send.sleep, send.clock);
       break;
     }
 #endif

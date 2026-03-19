@@ -920,11 +920,11 @@ void IRKelon168Ac::setSuper(const bool on) {
     setFan(kKelon168FanHigh);
     switch (_.Mode) {
       case kKelon168Heat:
-        setTemp(kKelonMaxTemp + getTempOffset());
+        setTemp(kKelon168MaxTemp + getTempOffset());
         break;
       case kKelon168Cool:
       default:
-        setTemp(kKelonMinTemp + getTempOffset());
+        setTemp(kKelon168MinTemp + getTempOffset());
         setMode(kKelon168Cool);
         break;
     }
@@ -1021,11 +1021,11 @@ stdAc::state_t IRKelon168Ac::toCommon(const stdAc::state_t *prev) const {
   }
   result.protocol = decode_type_t::KELON168;
   result.model = getModel();
-  if (_.Power) result.power = !result.power;
+  if (_.Power) result.power = _.On;
   result.mode = toCommonMode(_.Mode);
   result.celsius = true;
   result.degrees = getTemp();
-  result.fanspeed = toCommonFanSpeed(_.Fan);
+  result.fanspeed = toCommonFanSpeed(getFan());
   result.swingv = getSwing() ? stdAc::swingv_t::kAuto : stdAc::swingv_t::kOff;
   result.turbo = getSuper();
   result.light = getLight();
@@ -1051,7 +1051,7 @@ String IRKelon168Ac::toString(void) const {
   result += addModeToString(_.Mode, kKelon168Auto, kKelon168Cool,
                             kKelon168Heat, kKelon168Dry, kKelon168Fan);
   result += addTempToString(getTemp());
-  result += addFanToString(_.Fan, kKelon168FanHigh, kKelon168FanLow,
+  result += addFanToString(getFan(), kKelon168FanHigh, kKelon168FanLow,
                            kKelon168FanAuto, kKelon168FanAuto,
                            kKelon168FanMedium);
   result += addBoolToString(getSwing(), kSwingStr);

@@ -3462,7 +3462,7 @@ bool IRac::sendAc(const stdAc::state_t desired, const stdAc::state_t *prev) {
 #if SEND_KELON168
     case KELON168: {
       IRKelon168Ac ac(_pin, _inverted, _modulation);
-      kelon168(&ac, send.power, send.mode,next.degrees, send.fanspeed,
+      kelon168(&ac, send.power, send.mode, send.degrees, send.fanspeed,
               send.swingv, send.turbo, send.light, send.sleep, send.clock);
       break;
     }

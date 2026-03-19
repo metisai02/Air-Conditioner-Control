@@ -86,38 +86,64 @@ void WIFI_setup()
 
   server.on("/tempup", []()
             {
-  Serial.println("tempup");
+  Serial.println("tempup start");
   ac.next.degrees = min(ac.next.degrees + 1, 30.0f); // Max 30C
-  ac.sendAc();
-  server.send(200, "text/plain", "OK"); });
+  if(ac.sendAc()) {
+    Serial.println("tempup sent successfully");
+  } else {
+    Serial.println("tempup failed to send");
+  }
+  server.send(200, "text/plain", "OK"); 
+  Serial.println("tempup end"); });
 
   server.on("/tempdown", []()
             {
-    Serial.println("tempdown");
+    Serial.println("tempdown start");
     ac.next.degrees = max(ac.next.degrees - 1, 16.0f); // Min 16C
-    ac.sendAc();
-    server.send(200, "text/plain", "OK"); });
+    if(ac.sendAc()) {
+      Serial.println("tempdown sent successfully");
+    } else {
+      Serial.println("tempdown failed to send");
+    }
+    server.send(200, "text/plain", "OK"); 
+    Serial.println("tempdown end"); });
 
   server.on("/togglepower", []()
             {
-    Serial.println("togglepower");
+    Serial.println("togglepower start");
     ac.next.power = !ac.next.power;
-    ac.sendAc();
-    server.send(200, "text/plain", "OK"); });
+    if(ac.sendAc()) {
+      Serial.println("togglepower sent successfully");
+    } else {
+      Serial.println("togglepower failed to send");
+    }
+    server.send(200, "text/plain", "OK"); 
+    Serial.println("togglepower end"); });
 
   server.on("/modecool", []()
             {
-    Serial.println("modecool");
+    Serial.println("modecool start");
     ac.next.mode = stdAc::opmode_t::kCool;
-    ac.sendAc();
-    server.send(200, "text/plain", "OK"); });
+    if(ac.sendAc()) {
+      Serial.println("modecool sent successfully");
+    } else {
+      Serial.println("modecool failed to send");
+    }
+    server.send(200, "text/plain", "OK");
+    Serial.println("modecool end"); });
 
   server.on("/modefan", []()
             {
-    Serial.println("modefan");
+    Serial.println("modefan start");
     ac.next.mode = stdAc::opmode_t::kFan;
-    ac.sendAc();
-    server.send(200, "text/plain", "OK"); });
+    if(ac.sendAc()) {
+      Serial.println("modefan sent successfully");
+    } else {
+      Serial.println("modefan failed to send");
+    }
+    server.send(200, "text/plain", "OK"); 
+    
+    Serial.println("modefan end"); });
 }
 
 void setup()

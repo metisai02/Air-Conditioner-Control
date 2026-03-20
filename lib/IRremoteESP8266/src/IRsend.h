@@ -43,6 +43,18 @@ const uint32_t kDefaultMessageGap = 100000;
 /// @note Not using "-1" as it may be a valid external temp
 const float kNoTempValue = -100.0;
 
+/*Update structure for Kelon*/
+enum class kelon_freshAir_en {
+  /*Off -> Byte2.Bit7 = 1 and Byte10.bit7-5 = 000*/
+  /*Low --> Byte2.Bit7 = 1 and Byte10.bit7-5 = 001*/
+  /*Medium --> Byte2.Bit7 = 1 and Byte10.bit7-5 = 010*/
+  /*High --> Byte2.Bit7 = 1 and Byte10.bit7-5 = 011*/
+  kelon_freshAir_OFF = 0,
+  kelon_freshAir_LOW = 1,
+  kelon_freshAir_MID = 2,
+  kelon_freshAir_HIGH = 3,
+  kelon_freshAir_MAX = 3
+};
 /// Enumerators and Structures for the Common A/C API.
 namespace stdAc {
 /// Common A/C settings for A/C operating modes.

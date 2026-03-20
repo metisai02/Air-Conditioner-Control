@@ -162,68 +162,69 @@ union Kelon168Protocol {
     // Byte 0~1
     uint8_t preamble[2];  // Fixed to 0x83, 0x06
     // Byte 2
-    uint8_t Fan     :2;
-    uint8_t Power   :1;
-    uint8_t Sleep   :1;
-    uint8_t         :3;   // Not encoded / used, should be dry?
-    uint8_t Swing1  :1;
+    uint8_t Fan : 2;
+    uint8_t PowerOnTemp : 1;
+    uint8_t :1;
+    uint8_t TempDiff :3;
+    uint8_t winDirection : 1;
     // Byte 3
-    uint8_t Mode  :3;
-    uint8_t       :1;
-    uint8_t Temp  :4;
+    uint8_t Mode : 3;
+    uint8_t : 1;
+    uint8_t TempSetting : 4; 
     // Byte 4
-    uint8_t       :8;
+    uint8_t : 8;
     // Byte 5
-    uint8_t         :4;
-    uint8_t Super1  :1;
-    uint8_t         :2;
-    uint8_t Super2  :1;
+    uint8_t IsNoDraft: 1;
+    uint8_t VerticalWindDirection: 1;
+    uint8_t HorizontalWindDirection: 1;
+    uint8_t FreshAir: 1;
+    uint8_t : 4;
     // Byte 6
-    uint8_t ClockHours  :5;
-    uint8_t LightOff    :1;
-    uint8_t             :2;
+    uint8_t : 6;
+    uint8_t isCelsius: 1;
+    uint8_t triggerManualkeyCode: 1;
     // Byte 7
-    uint8_t ClockMins       :6;
-    uint8_t                 :1;
-    uint8_t OffTimerEnabled :1;
+    uint8_t : 8;
     // Byte 8
-    uint8_t OffHours  :5;
-    uint8_t           :1;
-    uint8_t Swing2    :1;
-    uint8_t           :1;
+    uint8_t : 6;
+    uint8_t isClickVerticalWindDirection: 1;
+    uint8_t isClickHorizontalWindDirection: 1;
     // Byte 9
-    uint8_t OffMins         :6;
-    uint8_t                 :1;
-    uint8_t OnTimerEnabled  :1;
+    uint8_t : 8;
     // Byte 10
-    uint8_t OnHours :5;
-    uint8_t         :3;
+    uint8_t : 5;
+    uint8_t swingLouver: 3;
     // Byte 11
-    uint8_t OnMins  :6;
-    uint8_t         :2;
+    uint8_t : 8;
     // Byte 12
-    uint8_t       :8;
+    uint8_t : 8;
     // Byte 13
-    uint8_t Sum1  :8;
+    uint8_t Sum1 : 8;  // checksum of the first part
     // Byte 14
-    uint8_t       :8;
+    uint8_t : 2;
+    uint8_t isQuietMode: 1;
+    uint8_t isUseVoiceMode: 1;
+    uint8_t : 4;
     // Byte 15
-    uint8_t Cmd   :8;
+    /*Key code refer with table 5*/
+    uint8_t keyCodeCommand: 8;
     // Byte 16
-    uint8_t       :1;
-    uint8_t Fan2  :1;
-    uint8_t       :6;
+    uint8_t : 8;
     // Byte 17
-    uint8_t pad1;
-    // Byte 18 (Model1 & Model2 are some fixed bits.
-    // On Whirlpool remotes they indicate the remote model)
-    uint8_t Model1 :4;
-    uint8_t On     :1;
-    uint8_t Model2 :3;
+    /*Expand swing level --> Dont use*/
+    uint8_t : 8;
+    // Byte 18
+    uint8_t isSelfCheckRemote: 1;
+    uint8_t : 3;
+    uint8_t PowerOn: 1;
+    /*1: Power on by state: 0 power on by temporary code*/
+    uint8_t isPowerOnByState : 1;
+    uint8_t : 2;
     // Byte 19
-    uint8_t       :8;
+    uint8_t isSmartModeState: 1;
+    uint8_t : 7;
     // Byte 20
-    uint8_t Sum2  :8;
+    uint8_t Sum2 : 8;  // checksum of the second part
   };
 };
 
@@ -249,6 +250,7 @@ const uint8_t kKelon168FanMax = 5;      // 0b101
 const uint8_t kKelon168MinTemp = 16;     // 16C (DG11R2-01)
 const uint8_t kKelon168MaxTemp = 32;     // 30C (DG11R2-01)
 const uint8_t kKelon168AutoTemp = 23;    // 23C
+
 const uint8_t kKelon168CommandLight = 0x00;
 const uint8_t kKelon168CommandPower = 0x01;
 const uint8_t kKelon168CommandTemp = 0x02;
@@ -261,6 +263,13 @@ const uint8_t kKelon168CommandIFeel = 0x0D;
 const uint8_t kKelon168CommandFanSpeed = 0x11;
 // const uint8_t kKelon168CommandIFeel = 0x17; // ?
 const uint8_t kKelon168CommandOffTimer = 0x1D;
+
+/*Add new commands for Kelon168 in table 5*/
+const uint8_t kKelon168CommandQuiet = 11u;
+const uint8_t kKelon168CommandVoice = 18u;
+const uint8_t kKelon168CommandSmart = 40u;
+const uint8_t kKelon168CommandOnOff = 37u;
+const uint8_t kKelon168CommandLeftRightSwing = 8u;
 
 class IRKelon168Ac {
  public:
@@ -306,6 +315,19 @@ class IRKelon168Ac {
   void setOffTimer(const uint16_t minsPastMidight);
   void enableOffTimer(const bool on);
   bool isOffTimerEnabled(void) const;
+  /*todo: Adding new features*/
+  void setSmartMode(const bool smartMode);
+  bool getSmartMode(void) const;
+  void setVoiceMode(const bool voiceMode);
+  bool getVoiceMode(void) const;
+  void setSwingVerticalMode(const bool swingVerticalMode);
+  bool getSwingVerticalMode(void) const;
+  void setSwingHorizontalMode(const bool swingHorizontalMode);
+  bool getSwingHorizontalMode(void) const;
+  void setFreshAirMode(const kelon_freshAir_en freshAirMode);
+  kelon_freshAir_en getFreshAirMode(void) const;
+
+  /************************************************ */
   void setCommand(const uint8_t code);
   uint8_t getCommand(void) const;
   kelon168_ac_remote_model_t getModel(void) const;

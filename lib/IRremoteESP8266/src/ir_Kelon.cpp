@@ -587,8 +587,10 @@ void IRKelon168Ac::stateReset(void) {
   _.raw[0]  = 0x83;
   _.raw[1]  = 0x06;
   _.raw[6]  = 0x80;
+  _.st_isCelsius = true;  // This is a bit of a hack to avoid having to set the temp. twice.
   _.raw[18] = 0x28;             // Remote model, device off
   _setTemp(kKelon168AutoTemp);  // Default to a sane value, 23C
+  lastKeyCodeCommand = kKelon168CommandTemp;  // Default to a sane value, temp command
 }
 
 /// Set up hardware to be able to send a message.
@@ -658,16 +660,16 @@ kelon168_ac_remote_model_t IRKelon168Ac::getModel(void) const {
   return DG11R201;
 }
 
-/// Set the model of the A/C to emulate.
-/// @param[in] model The enum of the appropriate model.
-void IRKelon168Ac::setModel(const kelon168_ac_remote_model_t model) {
-  switch (model) {
-    case kelon168_ac_remote_model_t::DG11R201:
-    default:
-      _.Model1 = 0b1000;
-      _.Model2 = 0b001;
-  }
-}
+// /// Set the model of the A/C to emulate.
+// /// @param[in] model The enum of the appropriate model.
+// void IRKelon168Ac::setModel(const kelon168_ac_remote_model_t model) {
+//   switch (model) {
+//     case kelon168_ac_remote_model_t::DG11R201:
+//     default:
+//       _.Model1 = 0b1000;
+//       _.Model2 = 0b001;
+//   }
+// }
 
 /// Calculate the temp. offset in deg C for the current model.
 /// Actually not used, but left for eventual support.
@@ -685,7 +687,7 @@ void IRKelon168Ac::_setTemp(const uint8_t temp, const bool remember) {
   int8_t offset = getTempOffset();  // Cache the min temp for the model.
   uint8_t newtemp = std::max((uint8_t)(kKelon168MinTemp + offset), temp);
   newtemp = std::min((uint8_t)(kKelon168MaxTemp + offset), newtemp);
-  _.Temp = newtemp - (kKelon168MinTemp + offset);
+  _.tempemtureSetting = newtemp - (kKelon168MinTemp + offset);
 }
 
 /// Set the temperature.
@@ -693,13 +695,12 @@ void IRKelon168Ac::_setTemp(const uint8_t temp, const bool remember) {
 void IRKelon168Ac::setTemp(const uint8_t temp) {
   _setTemp(temp);
   setSuper(false);  // Changing temp cancels Super/Jet mode.
-  _.Cmd = kKelon168CommandTemp;
 }
 
 /// Get the current temperature setting.
 /// @return The current setting for temp. in degrees celsius.
 uint8_t IRKelon168Ac::getTemp(void) const {
-  return _.Temp + kKelon168MinTemp + getTempOffset();
+  return _.tempemtureSetting + kKelon168MinTemp + getTempOffset();
 }
 
 /// Set the operating mode of the A/C.
@@ -708,7 +709,7 @@ uint8_t IRKelon168Ac::getTemp(void) const {
 void IRKelon168Ac::_setMode(const uint8_t mode) {
   switch (mode) {
     case kKelon168Auto:
-      setFan(kKelonFanAuto);
+      setFan(kKelon168FanAuto);
       _setTemp(kKelon168AutoTemp, false);
       setSleep(false);  // Cancel sleep mode when in auto/6thsense mode.
       // FALL THRU
@@ -716,13 +717,13 @@ void IRKelon168Ac::_setMode(const uint8_t mode) {
     case kKelon168Cool:
     case kKelon168Dry:
     case kKelon168Fan:
-      _.Mode = mode;
-      _.Cmd = kKelon168CommandMode;
+      _.st_mode = mode;
+      _.keyCodeCommand = kKelon168CommandMode;
       break;
     default:
       return;
   }
-  if (mode == kKelon168Auto) _.Cmd = kKelon168CommandIFeel;
+  if (mode == kKelon168Auto) _.keyCodeCommand = kKelon168CommandIFeel;
 }
 
 /// Set the operating mode of the A/C.
@@ -735,7 +736,7 @@ void IRKelon168Ac::setMode(const uint8_t mode) {
 /// Get the operating mode setting of the A/C.
 /// @return The current operating mode setting.
 uint8_t IRKelon168Ac::getMode(void) const {
-  return _.Mode;
+  return _.st_mode;
 }
 
 /// Set the speed of the fan.
@@ -743,32 +744,31 @@ uint8_t IRKelon168Ac::getMode(void) const {
 void IRKelon168Ac::setFan(const uint8_t speed) {
   switch (speed) {
     case kKelon168FanAuto:
-      _.Fan = 0;
-      _.Fan2 = 0;
+      _.st_fan = 0;
+      _.isExpandWind = 0;
       break;
     case kKelon168FanMin:
-      _.Fan  = 0b11;
-      _.Fan2 = 0;
+      _.st_fan  = 0b11;
+      _.isExpandWind = 0;
       break;
     case kKelon168FanLow:
-      _.Fan = 0b11;
-      _.Fan2 = 1;
+      _.st_fan = 0b11;
+      _.isExpandWind = 1;
       break;
     case kKelon168FanMedium:
-      _.Fan = 0b10;
-      _.Fan2 = 0;
+      _.st_fan = 0b10;
+      _.isExpandWind = 0;
       break;
     case kKelon168FanHigh:
-      _.Fan = 0b01;
-      _.Fan2 = 1;
+      _.st_fan = 0b01;
+      _.isExpandWind = 1;
       break;
     case kKelon168FanMax:
-      _.Fan = 0b01;
-      _.Fan2 = 0;
+      _.st_fan = 0b01;
+      _.isExpandWind = 0;
       break;
   }
   setSuper(false);  // Changing fan speed cancels Super/Jet mode.
-  _.Cmd = kKelon168CommandFanSpeed;
 }
 
 /// Get the current fan speed setting.
@@ -777,30 +777,113 @@ void IRKelon168Ac::setFan(const uint8_t speed) {
 /// 5 High) are written as 3,2,1 (inverted scale)
 /// @return The current fan speed/mode.
 uint8_t IRKelon168Ac::getFan(void) const {
-  switch (_.Fan) {
+  switch (_.st_fan) {
     case 0b01:
-      return _.Fan2 == 0 ? kKelon168FanMax : kKelon168FanHigh;
+      return _.isExpandWind == 0 ? kKelon168FanMax : kKelon168FanHigh;
     case 0b10:
       return kKelon168FanMedium;
     case 0b11:
-      return _.Fan2 == 0 ? kKelon168FanMin : kKelon168FanLow;
+      return _.isExpandWind == 0 ? kKelon168FanMin : kKelon168FanLow;
     default:
       return kKelon168FanAuto;
   }
 }
 
-/// Set the (vertical) swing setting of the A/C.
-/// @param[in] on true, the setting is on. false, the setting is off.
-void IRKelon168Ac::setSwing(const bool on) {
-  _.Swing1 = on;
-  _.Swing2 = on;
-  _.Cmd = kKelon168CommandSwing;
+void IRKelon168Ac::setFreshAirMode(const uint8_t freshAir) 
+{  
+  _.st_freshAir = 1;
+  switch (freshAir)
+  {
+  case kKelon168FreshAirOff:
+      _.swingLouver = 0b000;
+      break;
+  case kKelon168FreshAirLow:
+    _.swingLouver = 0b001;
+    break;
+  case kKelon168FreshAirMedium:
+    _.swingLouver = 0b010;
+    break;
+  case kKelon168FreshAirHigh:
+    _.swingLouver = 0b011;
+    break;
+  default :
+    _.st_freshAir = 0;
+    break;
+  }
+  /*Todo: Add command for fresh air mode */
+}
+uint8_t IRKelon168Ac::getFreshAirMode(void) const {
+  if (!_.st_freshAir) return kKelon168FreshAirOff;
+  switch (_.swingLouver)
+  {
+  case 0b000:
+      return kKelon168FreshAirOff;
+  case 0b001:
+    return kKelon168FreshAirLow;
+  case 0b010:
+    return kKelon168FreshAirMedium;
+  case 0b011:
+    return kKelon168FreshAirHigh;
+  default :
+    return kKelon168FreshAirOff;
+  }
+}
+void IRKelon168Ac::setSmartMode(const bool smartMode) {
+  _.st_isSmartMode = smartMode;
+}
+bool IRKelon168Ac::getSmartMode(void) const {
+  return _.st_isSmartMode;
 }
 
+void IRKelon168Ac::setVoiceMode(const bool voiceMode)
+{  _.st_isVoiceMode = voiceMode;
+}
+bool IRKelon168Ac::getVoiceMode(void) const
+{
+  return _.st_isVoiceMode;
+}
+/// Set the (vertical) swing setting of the A/C.
+/// @param[in] on true, the setting is on. false, the setting is off.
+void IRKelon168Ac::setSwingVertical(const bool on) {
+  _.st_isClickVerticalWindDirection = on;
+  _.tm_winDirection = on;
+}
+
+void IRKelon168Ac::setQuietMode(const bool quietMode) {
+  _.st_isQuietMode = quietMode;
+}
+
+bool IRKelon168Ac::getQuietMode(void) const {
+  return _.st_isQuietMode;
+}
+void IRKelon168Ac::setEcoMode(const bool ecoMode) {
+
+  _.st_isEcoMode = ecoMode;
+  if(ecoMode)
+  {
+    setFan(kKelon168FanMin);
+    setTemp(kKelon168AutoTemp);
+  }
+}
+bool IRKelon168Ac::getEcoMode(void) const {
+  return _.st_isEcoMode;
+}
 /// Get the (vertical) swing setting of the A/C.
 /// @return true, the setting is on. false, the setting is off.
-bool IRKelon168Ac::getSwing(void) const {
-  return _.Swing1 && _.Swing2;
+bool IRKelon168Ac::getSwingVertical(void) const {
+  return _.tm_winDirection && _.st_isClickVerticalWindDirection;
+}
+/// Set the (horizontal) swing setting of the A/C.
+/// @param[in] on true, the setting is on. false, the setting is off.
+void IRKelon168Ac::setSwingHorizontal(const bool on) {
+  _.st_isClickHorizontalWindDirection = on;
+  _.tm_winDirection = on;
+}
+
+/// Get the (horizontal) swing setting of the A/C.
+/// @return true, the setting is on. false, the setting is off.
+bool IRKelon168Ac::getSwingHorizontal(void) const {
+  return _.tm_winDirection && _.st_isClickHorizontalWindDirection;
 }
 
 /// Set the Light (Display/LED) setting of the A/C.
@@ -843,14 +926,13 @@ uint16_t IRKelon168Ac::getOffTimer(void) const {
 /// Is the Off timer enabled?
 /// @return true, the Timer is enabled. false, the Timer is disabled.
 bool IRKelon168Ac::isOffTimerEnabled(void) const {
-  return _.OffTimerEnabled;
+  return _.tm_isOffTimerEnabled;
 }
 
 /// Enable the Off Timer.
 /// @param[in] on true, the timer is enabled. false, the timer is disabled.
 void IRKelon168Ac::enableOffTimer(const bool on) {
-  _.OffTimerEnabled = on;
-  _.Cmd = kKelon168CommandOffTimer;
+  _.tm_isOffTimerEnabled = on;
 }
 
 /// Set the On Timer time.
@@ -868,49 +950,46 @@ uint16_t IRKelon168Ac::getOnTimer(void) const {
 /// Is the On timer enabled?
 /// @return true, the Timer is enabled. false, the Timer is disabled.
 bool IRKelon168Ac::isOnTimerEnabled(void) const {
-  return _.OnTimerEnabled;
+  return _.tm_isOnTimerEnabled;
 }
 
 /// Enable the On Timer.
 /// @param[in] on true, the timer is enabled. false, the timer is disabled.
 void IRKelon168Ac::enableOnTimer(const bool on) {
-  _.OnTimerEnabled = on;
-  _.Cmd = kKelon168CommandOnTimer;
+  _.tm_isOnTimerEnabled = on;
 }
 
 /// Change the power setting.
 /// @param[in] on true, the setting is on. false, the setting is off.
-void IRKelon168Ac::setPower(const bool on) {
-  _.Power = true;
-  _.On = on;
+void IRKelon168Ac::setPowerTemp(const bool on) {
+  _.tm_isClickpowerOn = true;
+  _.isPowerOn = on;
   setSuper(false);  // Changing power cancels Super/Jet mode.
-  _.Cmd = kKelon168CommandPower;
 }
 
 /// Get the value of the current power toggle setting.
 /// @return true, the setting is on. false, the setting is off.
-bool IRKelon168Ac::getPower(void) const {
-  return _.Power;
+bool IRKelon168Ac::getPowerTemp(void) const {
+  return _.isPowerOn;
 }
 
 /// Get the Command (Button) setting of the A/C.
 /// @return The current Command (Button) of the A/C.
 uint8_t IRKelon168Ac::getCommand(void) const {
-  return _.Cmd;
+  return _.keyCodeCommand;
 }
 
 /// Set the Sleep setting of the A/C.
 /// @param[in] on true, the setting is on. false, the setting is off.
 void IRKelon168Ac::setSleep(const bool on) {
-  _.Sleep = on;
+  _.st_sleep = on;
   if (on) setFan(kKelon168FanLow);
-  _.Cmd = kKelon168CommandSleep;
 }
 
 /// Get the Sleep setting of the A/C.
 /// @return true, the setting is on. false, the setting is off.
 bool IRKelon168Ac::getSleep(void) const {
-  return _.Sleep;
+  return _.st_sleep;
 }
 
 /// Set the Super (Turbo/Jet) setting of the A/C.
@@ -918,7 +997,7 @@ bool IRKelon168Ac::getSleep(void) const {
 void IRKelon168Ac::setSuper(const bool on) {
   if (on) {
     setFan(kKelon168FanHigh);
-    switch (_.Mode) {
+    switch (_.st_mode) {
       case kKelon168Heat:
         setTemp(kKelon168MaxTemp + getTempOffset());
         break;
@@ -934,7 +1013,6 @@ void IRKelon168Ac::setSuper(const bool on) {
     _.Super1 = 0;
     _.Super2 = 0;
   }
-  _.Cmd = kKelon168CommandSuper;
 }
 
 /// Get the Super (Turbo/Jet) setting of the A/C.
@@ -946,7 +1024,7 @@ bool IRKelon168Ac::getSuper(void) const {
 /// Set the Command (Button) setting of the A/C.
 /// @param[in] code The current Command (Button) of the A/C.
 void IRKelon168Ac::setCommand(const uint8_t code) {
-  _.Cmd = code;
+  _.keyCodeCommand = code;
 }
 
 /// Convert a stdAc::opmode_t enum into its native mode.
@@ -963,7 +1041,82 @@ uint8_t IRKelon168Ac::convertMode(const stdAc::opmode_t mode) {
     default:                     return kKelon168Cool;
   }
 }
-
+static uint8_t convertKeyCodeCommand(const stdAc::ac_command_t code)
+{
+  switch (code)
+  {
+  case stdAc::ac_command_t::kPowerCommand:
+    return kKelon168CommandPowerTemp;
+  case stdAc::ac_command_t::kModeCommand:
+    return kKelon168CommandMode;
+  case stdAc::ac_command_t::kTempCommand:
+    return kKelon168CommandTemp;
+  case stdAc::ac_command_t::kFanSpeedCommand:
+    return kKelon168CommandFanSpeed;
+  case stdAc::ac_command_t::kSwingVCommand:
+    return kKelon168CommandVerticalSwing;
+  case stdAc::ac_command_t::kSwingHCommand:
+    return kKelon168CommandHorizontalSwing;
+  case stdAc::ac_command_t::kOnTimerCommand:
+    return kKelon168CommandOnTimer;
+  case stdAc::ac_command_t::kOffTimerCommand:
+    return kKelon168CommandOffTimer;
+  case stdAc::ac_command_t::kSleepCommand:
+    return kKelon168CommandSleep;
+  case stdAc::ac_command_t::kSuperCommand:
+    return kKelon168CommandSuper;
+  case stdAc::ac_command_t::kVoiceCommand:
+    return kKelon168CommandVoiceMode;
+  case stdAc::ac_command_t::kSmartCommand:
+    return kKelon168CommandSmartMode;
+  case stdAc::ac_command_t::kQuietCommand:
+    return kKelon168CommandQuietMode;
+  case stdAc::ac_command_t::kEconoCommand:
+    return kKelon168CommandEcoMode;
+  case stdAc::ac_command_t::kLightCommand:
+    return kKelon168CommandLight;
+  default:
+    return kKelon168CommandUnknown;
+  }
+}
+static stdAc::ac_command_t toCommonCommand(const uint8_t code)
+{
+  switch (code)
+  {
+  case kKelon168CommandPowerTemp:
+    return stdAc::ac_command_t::kPowerCommand;
+  case kKelon168CommandMode:
+    return stdAc::ac_command_t::kModeCommand;
+  case kKelon168CommandTemp:
+    return stdAc::ac_command_t::kTempCommand;
+  case kKelon168CommandFanSpeed:
+    return stdAc::ac_command_t::kFanSpeedCommand;
+  case kKelon168CommandVerticalSwing:
+    return stdAc::ac_command_t::kSwingVCommand;
+  case kKelon168CommandHorizontalSwing:
+    return stdAc::ac_command_t::kSwingHCommand;
+  case kKelon168CommandOnTimer:
+    return stdAc::ac_command_t::kOnTimerCommand;
+  case kKelon168CommandOffTimer:
+    return stdAc::ac_command_t::kOffTimerCommand;
+  case kKelon168CommandSleep:
+    return stdAc::ac_command_t::kSleepCommand;
+  case kKelon168CommandSuper:
+    return stdAc::ac_command_t::kSuperCommand;
+  case kKelon168CommandVoiceMode:
+    return stdAc::ac_command_t::kVoiceCommand;
+  case kKelon168CommandSmartMode:
+    return stdAc::ac_command_t::kSmartCommand;
+  case kKelon168CommandQuietMode:
+    return stdAc::ac_command_t::kQuietCommand;
+  case kKelon168CommandEcoMode:
+    return stdAc::ac_command_t::kEconoCommand;
+  case kKelon168CommandLight:
+    return stdAc::ac_command_t::kLightCommand;
+  default:
+    return stdAc::ac_command_t::kUnknownCommand;
+  }
+}
 /// Convert a stdAc::fanspeed_t enum into it's native speed.
 /// @param[in] speed The enum to be converted.
 /// @return The native equivalent of the enum.
@@ -977,7 +1130,25 @@ uint8_t IRKelon168Ac::convertFan(const stdAc::fanspeed_t speed) {
     default:                         return kKelon168FanAuto;
   }
 }
+uint8_t IRKelon168Ac::convertFreshAir(const stdAc::freshAir_t freshAir) {
+  switch (freshAir) {
+    case stdAc::freshAir_t::kOff:  return kKelon168FreshAirOff;
+    case stdAc::freshAir_t::kLow:  return kKelon168FreshAirLow;
+    case stdAc::freshAir_t::kMedium: return kKelon168FreshAirMedium;
+    case stdAc::freshAir_t::kHigh: return kKelon168FreshAirHigh;
+    default:                      return kKelon168FreshAirOff;
+  }
+}
 
+stdAc::freshAir_t IRKelon168Ac::toCommonFreshAir(const uint8_t freshAir) {
+  switch (freshAir) {
+    case kKelon168FreshAirLow: return stdAc::freshAir_t::kLow;
+    case kKelon168FreshAirMedium: return stdAc::freshAir_t::kMedium;
+    case kKelon168FreshAirHigh: return stdAc::freshAir_t::kHigh;
+    case kKelon168FreshAirOff:
+    default:                   return stdAc::freshAir_t::kOff;
+  }
+}
 /// Convert a native mode into its stdAc equivalent.
 /// @param[in] mode The native setting to be converted.
 /// @return The stdAc equivalent of the native setting.
@@ -990,6 +1161,7 @@ stdAc::opmode_t IRKelon168Ac::toCommonMode(const uint8_t mode) {
     default:            return stdAc::opmode_t::kAuto;
   }
 }
+
 
 /// Convert a native fan speed into its stdAc equivalent.
 /// @param[in] speed The native setting to be converted.
@@ -1021,20 +1193,22 @@ stdAc::state_t IRKelon168Ac::toCommon(const stdAc::state_t *prev) const {
   }
   result.protocol = decode_type_t::KELON168;
   result.model = getModel();
-  if (_.Power) result.power = _.On;
-  result.mode = toCommonMode(_.Mode);
+  if (_.tm_isClickpowerOn) result.power = _.isPowerOn;
+  result.mode = toCommonMode(_.st_mode);
   result.celsius = true;
   result.degrees = getTemp();
   result.fanspeed = toCommonFanSpeed(getFan());
-  result.swingv = getSwing() ? stdAc::swingv_t::kAuto : stdAc::swingv_t::kOff;
+  result.swingv = getSwingVertical() ? stdAc::swingv_t::kAuto : stdAc::swingv_t::kOff;
+  result.swingh = getSwingHorizontal() ? stdAc::swingh_t::kAuto : stdAc::swingh_t::kOff;
+  result.freshAir = toCommonFreshAir(getFreshAirMode());
+  result.smart = getSmartMode();
+  result.voice = getVoiceMode();
   result.turbo = getSuper();
   result.light = getLight();
-  result.sleep = _.Sleep ? 0 : -1;
-  // TODO(leonardfactory) add encoding
-  result.swingh = stdAc::swingh_t::kOff;
-  result.quiet = false;
+  result.sleep = _.st_sleep ? 0 : -1;
+  result.quiet = getQuietMode();
   result.filter = false;
-  result.econo = false;
+  result.econo = getEcoMode();
   result.clean = false;
   result.beep = false;
   result.clock = -1;
@@ -1047,29 +1221,38 @@ String IRKelon168Ac::toString(void) const {
   String result = "";
   result.reserve(200);  // Reserve some heap for the string to reduce fragging.
   result += addModelToString(decode_type_t::KELON168, getModel(), false);
-  result += addBoolToString(_.Power, kPowerToggleStr);
-  result += addModeToString(_.Mode, kKelon168Auto, kKelon168Cool,
+  result += addBoolToString(_.tm_isClickpowerOn, kPowerToggleStr);
+  result += addModeToString(_.st_mode, kKelon168Auto, kKelon168Cool,
                             kKelon168Heat, kKelon168Dry, kKelon168Fan);
   result += addTempToString(getTemp());
   result += addFanToString(getFan(), kKelon168FanHigh, kKelon168FanLow,
                            kKelon168FanAuto, kKelon168FanAuto,
                            kKelon168FanMedium);
-  result += addBoolToString(getSwing(), kSwingStr);
+  result += addBoolToString(getSwingVertical(), kSwingVStr);
+  result += addBoolToString(getSwingHorizontal(), kSwingHStr);
   result += addBoolToString(getLight(), kLightStr);
   result += addLabeledString(minsToString(getClock()), kClockStr);
   result += addLabeledString(
-      _.OnTimerEnabled ? minsToString(getOnTimer()) : kOffStr, kOnTimerStr);
+      _.tm_isOnTimerEnabled ? minsToString(getOnTimer()) : kOffStr, kOnTimerStr);
   result += addLabeledString(
-      _.OffTimerEnabled ? minsToString(getOffTimer()) : kOffStr, kOffTimerStr);
-  result += addBoolToString(_.Sleep, kSleepStr);
+      _.tm_isOffTimerEnabled ? minsToString(getOffTimer()) : kOffStr, kOffTimerStr);
+  result += addBoolToString(_.st_sleep, kSleepStr);
   result += addBoolToString(getSuper(), kSuperStr);
-  result += addIntToString(_.Cmd, kCommandStr);
+  result += addIntToString(_.keyCodeCommand, kCommandStr);
+  result += addLabeledString(
+      getFreshAirMode() != kKelon168FreshAirOff ?
+          addIntToString(getFreshAirMode(), "FreshAir") : kOffStr, "kFreshAir_Off");
+  result += addBoolToString(getQuietMode(), kQuietStr);
+  result += addBoolToString(getEcoMode(), "Eco");
+  result += addBoolToString(getSmartMode(), "Smart");
+  result += addBoolToString(getVoiceMode(), "Voice");
+  result += addIntToString(_.keyCodeCommand, kCommandStr);
   result += kSpaceLBraceStr;
-  switch (_.Cmd) {
+  switch (_.keyCodeCommand) {
     case kKelon168CommandLight:
       result += kLightStr;
       break;
-    case kKelon168CommandPower:
+    case kKelon168CommandPowerTemp:
       result += kPowerStr;
       break;
     case kKelon168CommandTemp:
@@ -1087,9 +1270,6 @@ String IRKelon168Ac::toString(void) const {
     case kKelon168CommandMode:
       result += kModeStr;
       break;
-    case kKelon168CommandSwing:
-      result += kSwingStr;
-      break;
     case kKelon168CommandIFeel:
       result += kIFeelStr;
       break;
@@ -1098,6 +1278,27 @@ String IRKelon168Ac::toString(void) const {
       break;
     case kKelon168CommandOffTimer:
       result += kOffTimerStr;
+      break;
+    case kKelon168CommandVerticalSwing:
+      result += kSwingVStr;
+      break;
+    case kKelon168CommandHorizontalSwing:
+      result += kSwingHStr;
+      break;
+    case kKelon168CommandEcoMode:
+      result += "Eco";
+      break;
+    case kKelon168CommandQuietMode:
+      result += kQuietStr;
+      break;
+    case kKelon168CommandSmartMode:
+      result += "Smart";
+      break;
+    case kKelon168CommandVoiceMode:
+      result += "Voice";
+      break;
+    case kKelon168CommandOnOff:
+      result += kPowerStr;
       break;
     default:
       result += kUnknownStr;

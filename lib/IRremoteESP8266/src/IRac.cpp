@@ -1813,23 +1813,34 @@ void IRac::kelon(IRKelonAc *ac, const bool togglePower,
 /// @param[in] toggleSwing Whether to toggle the swing setting
 /// @param[in] superCool Run the device in Super cooling mode.
 /// @param[in] sleep Nr. of minutes for sleep mode. -1 is Off, >= 0 is on
-void IRac::kelon168(IRKelon168Ac *ac, const bool togglePower,
+void IRac::kelon168(IRKelon168Ac *ac,stdAc::ac_command_t command, const bool Power,
                      const stdAc::opmode_t mode,
                  const float degrees, const stdAc::fanspeed_t fan,
-                 const stdAc::swingv_t swingv, const bool turbo, const bool light,
-                 const int16_t sleep, const int16_t clock) {
+                 const stdAc::swingv_t swingv, const stdAc::swingh_t swingh,
+                 const bool turbo, const bool light,
+                 const int16_t sleep, const int16_t clock, const bool smart, 
+                 const bool eco, const bool quiet, const bool voice) {
   ac->begin();
   /*Todo: will be implemented remaining features for KELON168 */
   
-  ac->setPower(togglePower);
+  ac->setPowerTemp(Power);
   ac->setMode(IRKelon168Ac::convertMode(mode));
   ac->setFan(IRKelon168Ac::convertFan(fan));
   ac->setTemp(static_cast<uint8_t>(degrees));
   ac->setSleep(sleep >= 0);
   ac->setSuper(turbo);
   ac->setLight(light);
-  ac->setSwing(swingv != stdAc::swingv_t::kOff);
+  ac->setSwingVertical(swingv != stdAc::swingv_t::kOff);
+  ac->setSwingHorizontal(swingh != stdAc::swingh_t::kOff);
   if (clock >= 0) ac->setClock(clock);
+  ac->setSmartMode(smart);
+  ac->setEcoMode(eco);
+  ac->setQuietMode(quiet);
+  ac->setVoiceMode(voice);
+  if(command != stdAc::ac_command_t::kModeCommand)
+  {
+    ac->setCommand(IRKelon168Ac::convertKeyCodeCommand(command));
+  }
 
   ac->send();
 }
@@ -3462,8 +3473,9 @@ bool IRac::sendAc(const stdAc::state_t desired, const stdAc::state_t *prev) {
 #if SEND_KELON168
     case KELON168: {
       IRKelon168Ac ac(_pin, _inverted, _modulation);
-      kelon168(&ac, send.power, send.mode, send.degrees, send.fanspeed,
-              send.swingv, send.turbo, send.light, send.sleep, send.clock);
+      kelon168(&ac,send.command, send.power, send.mode, send.degrees, send.fanspeed,
+              send.swingv, send.swingh, send.turbo, send.light, send.sleep, send.clock, 
+              send.smart, send.econo, send.quiet, send.voice);
       break;
     }
 #endif

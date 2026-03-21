@@ -162,49 +162,63 @@ union Kelon168Protocol {
     // Byte 0~1
     uint8_t preamble[2];  // Fixed to 0x83, 0x06
     // Byte 2
-    uint8_t Fan : 2;
-    uint8_t PowerOnTemp : 1;
-    uint8_t :1;
-    uint8_t TempDiff :3;
-    uint8_t winDirection : 1;
+    uint8_t st_fan : 2;
+    uint8_t tm_isClickpowerOn : 1;
+    /*Take from old libary*/
+    uint8_t st_sleep :1;
+    uint8_t tempDiff :3;
+    uint8_t tm_winDirection : 1;
     // Byte 3
-    uint8_t Mode : 3;
+    uint8_t st_mode : 3;
     uint8_t : 1;
-    uint8_t TempSetting : 4; 
+    uint8_t tempemtureSetting : 4; 
     // Byte 4
     uint8_t : 8;
     // Byte 5
-    uint8_t IsNoDraft: 1;
-    uint8_t VerticalWindDirection: 1;
-    uint8_t HorizontalWindDirection: 1;
-    uint8_t FreshAir: 1;
-    uint8_t : 4;
+    uint8_t st_isNoDraft: 1;
+    uint8_t : 1;
+    uint8_t st_isClickHorizontalWindDirection: 1;
+    uint8_t st_freshAir: 1;
+    /*Take from old libary*/
+    uint8_t Super1  :1;
+    uint8_t         :2;
+    uint8_t Super2  :1;
     // Byte 6
-    uint8_t : 6;
-    uint8_t isCelsius: 1;
-    uint8_t triggerManualkeyCode: 1;
+    uint8_t ClockHours : 5;
+    uint8_t LightOff : 1;
+    uint8_t st_isCelsius: 1;
+    uint8_t : 1;
     // Byte 7
-    uint8_t : 8;
+    uint8_t ClockMins: 6;
+    uint8_t : 1;
+    uint8_t tm_isOffTimerEnabled: 1;
     // Byte 8
-    uint8_t : 6;
-    uint8_t isClickVerticalWindDirection: 1;
-    uint8_t isClickHorizontalWindDirection: 1;
+    uint8_t OffHours : 5;
+    uint8_t : 1;
+    uint8_t st_isClickVerticalWindDirection: 1;
+    uint8_t : 1;
     // Byte 9
-    uint8_t : 8;
+    uint8_t OffMins : 6;
+    uint8_t : 1;
+    uint8_t tm_isOnTimerEnabled: 1;
     // Byte 10
-    uint8_t : 5;
+    uint8_t OnHours: 5;
+    /*Table 4*/
     uint8_t swingLouver: 3;
     // Byte 11
-    uint8_t : 8;
+    uint8_t OnMins: 6;
+    uint8_t : 2;
     // Byte 12
     uint8_t : 8;
     // Byte 13
     uint8_t Sum1 : 8;  // checksum of the first part
     // Byte 14
     uint8_t : 2;
-    uint8_t isQuietMode: 1;
-    uint8_t isUseVoiceMode: 1;
-    uint8_t : 4;
+    uint8_t st_isQuietMode: 1;
+    uint8_t st_isVoiceMode: 1;
+    uint8_t : 1;
+    uint8_t st_isEcoMode: 1;
+    uint8_t : 2;
     // Byte 15
     /*Key code refer with table 5*/
     uint8_t keyCodeCommand: 8;
@@ -212,16 +226,18 @@ union Kelon168Protocol {
     uint8_t : 8;
     // Byte 17
     /*Expand swing level --> Dont use*/
-    uint8_t : 8;
+    uint8_t : 6;
+    uint8_t isExpandWind: 1;
+    uint8_t : 1;
     // Byte 18
-    uint8_t isSelfCheckRemote: 1;
+    uint8_t tm_isSelfCheckRemote: 1;
     uint8_t : 3;
-    uint8_t PowerOn: 1;
+    uint8_t isPowerOn: 1;
     /*1: Power on by state: 0 power on by temporary code*/
-    uint8_t isPowerOnByState : 1;
+    uint8_t isState : 1;
     uint8_t : 2;
     // Byte 19
-    uint8_t isSmartModeState: 1;
+    uint8_t st_isSmartMode: 1;
     uint8_t : 7;
     // Byte 20
     uint8_t Sum2 : 8;  // checksum of the second part
@@ -251,25 +267,33 @@ const uint8_t kKelon168MinTemp = 16;     // 16C (DG11R2-01)
 const uint8_t kKelon168MaxTemp = 32;     // 30C (DG11R2-01)
 const uint8_t kKelon168AutoTemp = 23;    // 23C
 
+/*Todo: Fresh air*/
+const uint8_t kKelon168FreshAirOff = 0;
+const uint8_t kKelon168FreshAirLow = 1;
+const uint8_t kKelon168FreshAirMedium = 2;
+const uint8_t kKelon168FreshAirHigh = 3;
+
 const uint8_t kKelon168CommandLight = 0x00;
-const uint8_t kKelon168CommandPower = 0x01;
+const uint8_t kKelon168CommandPowerTemp = 0x01;
 const uint8_t kKelon168CommandTemp = 0x02;
 const uint8_t kKelon168CommandSleep = 0x03;
 const uint8_t kKelon168CommandSuper = 0x04;
 const uint8_t kKelon168CommandOnTimer = 0x05;
 const uint8_t kKelon168CommandMode = 0x06;
-const uint8_t kKelon168CommandSwing = 0x07;
+const uint8_t kKelon168CommandVerticalSwing = 0x07;
+const uint8_t kKelon168CommandHorizontalSwing = 0x08;
 const uint8_t kKelon168CommandIFeel = 0x0D;
 const uint8_t kKelon168CommandFanSpeed = 0x11;
 // const uint8_t kKelon168CommandIFeel = 0x17; // ?
 const uint8_t kKelon168CommandOffTimer = 0x1D;
+const uint8_t kKelon168CommandUnknown = 0xFF;  // Used when the command is unknown, e.g. when decoding a message with an unsupported command
 
 /*Add new commands for Kelon168 in table 5*/
-const uint8_t kKelon168CommandQuiet = 11u;
-const uint8_t kKelon168CommandVoice = 18u;
-const uint8_t kKelon168CommandSmart = 40u;
+const uint8_t kKelon168CommandQuietMode = 11u;
+const uint8_t kKelon168CommandEcoMode = 12u;
+const uint8_t kKelon168CommandVoiceMode = 18u;
 const uint8_t kKelon168CommandOnOff = 37u;
-const uint8_t kKelon168CommandLeftRightSwing = 8u;
+const uint8_t kKelon168CommandSmartMode = 40u;
 
 class IRKelon168Ac {
  public:
@@ -288,9 +312,12 @@ class IRKelon168Ac {
 
   void begin(void);
   void stateReset(void);
+  /*Need to adjust*/
+  void setPowerTemp(const bool on);
+  bool getPowerTemp(void) const;
+  // void setPower(const bool on);
+  // bool getPower(void) const;
 
-  void setPower(const bool on);
-  bool getPower(void) const;
   void setSleep(const bool on);
   bool getSleep(void) const;
   void setSuper(const bool on);
@@ -301,8 +328,10 @@ class IRKelon168Ac {
   uint8_t getFan(void) const;
   void setMode(const uint8_t mode);
   uint8_t getMode(void) const;
-  void setSwing(const bool on);
-  bool getSwing(void) const;
+  void setSwingVertical(const bool on);
+  bool getSwingVertical(void) const;
+  void setSwingHorizontal(const bool on);
+  bool getSwingHorizontal(void) const;
   void setLight(const bool on);
   bool getLight(void) const;
   uint16_t getClock(void) const;
@@ -315,17 +344,16 @@ class IRKelon168Ac {
   void setOffTimer(const uint16_t minsPastMidight);
   void enableOffTimer(const bool on);
   bool isOffTimerEnabled(void) const;
-  /*todo: Adding new features*/
+  void setFreshAirMode(const uint8_t freshAir);
+  uint8_t getFreshAirMode(void) const;
   void setSmartMode(const bool smartMode);
   bool getSmartMode(void) const;
   void setVoiceMode(const bool voiceMode);
   bool getVoiceMode(void) const;
-  void setSwingVerticalMode(const bool swingVerticalMode);
-  bool getSwingVerticalMode(void) const;
-  void setSwingHorizontalMode(const bool swingHorizontalMode);
-  bool getSwingHorizontalMode(void) const;
-  void setFreshAirMode(const kelon_freshAir_en freshAirMode);
-  kelon_freshAir_en getFreshAirMode(void) const;
+  void setQuietMode(const bool quietMode);
+  bool getQuietMode(void) const;
+  void setEcoMode(const bool ecoMode);
+  bool getEcoMode(void) const;
 
   /************************************************ */
   void setCommand(const uint8_t code);
@@ -337,10 +365,14 @@ class IRKelon168Ac {
               const uint16_t length = kKelon168StateLength);
   static bool validChecksum(const uint8_t state[],
                             const uint16_t length = kKelon168StateLength);
+  static uint8_t convertKeyCodeCommand(const stdAc::ac_command_t code);
   static uint8_t convertMode(const stdAc::opmode_t mode);
   static uint8_t convertFan(const stdAc::fanspeed_t speed);
+  static uint8_t convertFreshAir(const stdAc::freshAir_t freshAir);
+  static stdAc::freshAir_t toCommonFreshAir(const uint8_t freshAir);
   static stdAc::opmode_t toCommonMode(const uint8_t mode);
   static stdAc::fanspeed_t toCommonFanSpeed(const uint8_t speed);
+  static stdAc::ac_command_t toCommonCommand(const uint8_t code);
   stdAc::state_t toCommon(const stdAc::state_t *prev = NULL) const;
   String toString(void) const;
 #ifndef UNIT_TEST
@@ -355,6 +387,7 @@ class IRKelon168Ac {
   Kelon168Protocol _;
 
   uint8_t _desiredtemp;  ///< The last user explicitly set temperature.
+  uint8_t lastKeyCodeCommand;
   void checksum(const uint16_t length = kWhirlpoolAcStateLength);
   void _setTemp(const uint8_t temp, const bool remember = true);
   void _setMode(const uint8_t mode);

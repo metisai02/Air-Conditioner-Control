@@ -43,21 +43,22 @@ const uint32_t kDefaultMessageGap = 100000;
 /// @note Not using "-1" as it may be a valid external temp
 const float kNoTempValue = -100.0;
 
+/// Enumerators and Structures for the Common A/C API.
+namespace stdAc {
 /*Update structure for Kelon*/
-enum class kelon_freshAir_en {
+enum class freshAir_t {
   /*Off -> Byte2.Bit7 = 1 and Byte10.bit7-5 = 000*/
   /*Low --> Byte2.Bit7 = 1 and Byte10.bit7-5 = 001*/
   /*Medium --> Byte2.Bit7 = 1 and Byte10.bit7-5 = 010*/
   /*High --> Byte2.Bit7 = 1 and Byte10.bit7-5 = 011*/
-  kelon_freshAir_OFF = 0,
-  kelon_freshAir_LOW = 1,
-  kelon_freshAir_MID = 2,
-  kelon_freshAir_HIGH = 3,
-  kelon_freshAir_MAX = 3
+  kOff = 0,
+  kLow = 1,
+  kMedium = 2,
+  kHigh = 3,
+  kMax = 3
 };
-/// Enumerators and Structures for the Common A/C API.
-namespace stdAc {
-/// Common A/C settings for A/C operating modes.
+
+  /// Common A/C settings for A/C operating modes.
 enum class opmode_t {
   kOff  = -1,
   kAuto =  0,
@@ -104,8 +105,27 @@ enum class ac_command_t {
   kSensorTempReport = 1,
   kTimerCommand = 2,
   kConfigCommand = 3,
+  kPowerCommand = 4,
+  kSleepCommand = 5,
+  kClockCommand = 6,
+  kFreshAirCommand = 7,
+  kIFeelCommand = 8,
+  kVoiceCommand = 9,
+  kSmartCommand = 10,
+  kQuietCommand = 11,
+  kSuperCommand = 12,
+  kEconoCommand = 13,
+  kLightCommand = 14,
+  kSwingVCommand = 15,
+  kSwingHCommand = 16,
+  kFanSpeedCommand = 17,
+  kModeCommand = 18,
+  kTempCommand = 19,
+  kOnTimerCommand = 20,
+  kOffTimerCommand = 21,
+  kUnknownCommand = 255,  // Used when the command is unknown, e.g. when decoding a message with an unsupported command
   // Add new entries before this one, and update it to point to the last entry
-  kLastAcCommandEnum = kConfigCommand,
+  kLastAcCommandEnum = kOffTimerCommand,
 };
 
 /// Common A/C settings for Horizontal Swing.
@@ -133,6 +153,9 @@ struct state_t {
   stdAc::fanspeed_t fanspeed = stdAc::fanspeed_t::kAuto;
   stdAc::swingv_t swingv = stdAc::swingv_t::kOff;
   stdAc::swingh_t swingh = stdAc::swingh_t::kOff;
+  stdAc::freshAir_t freshAir = stdAc::freshAir_t::kOff;
+  bool voice = false;
+  bool smart = false;
   bool quiet = false;
   bool turbo = false;
   bool econo = false;

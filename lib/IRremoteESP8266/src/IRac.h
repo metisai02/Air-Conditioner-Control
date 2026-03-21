@@ -379,11 +379,13 @@ void electra(IRElectraAc *ac,
 #endif  // SEND_KELON
 /*Todo: add new feature for KELON168 */
 #if SEND_KELON168
-void kelon168(IRKelon168Ac *ac, const bool togglePower,
+void kelon168(IRKelon168Ac *ac, stdAc::ac_command_t command, const bool Power,
                      const stdAc::opmode_t mode,
                  const float degrees, const stdAc::fanspeed_t fan,
-                 const stdAc::swingv_t swingv, const bool turbo, const bool light,
-                 const int16_t sleep, const int16_t clock);
+                 const stdAc::swingv_t swingv, const stdAc::swingh_t swingh,
+                 const bool turbo, const bool light,
+                 const int16_t sleep, const int16_t clock, const bool smart, 
+                 const bool eco, const bool quiet, const bool voice);
 #endif  // SEND_KELON168
 
 #if SEND_KELVINATOR

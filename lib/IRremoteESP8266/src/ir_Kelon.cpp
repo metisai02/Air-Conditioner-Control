@@ -1041,7 +1041,7 @@ uint8_t IRKelon168Ac::convertMode(const stdAc::opmode_t mode) {
     default:                     return kKelon168Cool;
   }
 }
-static uint8_t convertKeyCodeCommand(const stdAc::ac_command_t code)
+uint8_t IRKelon168Ac::convertKeyCodeCommand(const stdAc::ac_command_t code)
 {
   switch (code)
   {

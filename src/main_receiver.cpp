@@ -7,10 +7,10 @@
 // ESP12E receiver pin connected to OUT of IR demodulator module.
 // Change if your hardware uses a different GPIO.
 const uint16_t kIrRecvPin = 14;  // D5 on many ESP8266 dev boards
-const uint16_t kCaptureBufferSize = 1024;
-const uint8_t kTimeout = 50;  // milliseconds
+const uint16_t kCaptureBufferSize = 500;
+const uint8_t kTimeout = 13;  // milliseconds
 
-IRrecv irrecv(kIrRecvPin, kCaptureBufferSize, kTimeout, true);
+IRrecv irrecv(kIrRecvPin, kCaptureBufferSize, kTimeout);
 decode_results results;
 
 void setup() {

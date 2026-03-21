@@ -57,12 +57,17 @@ void IR_setup()
 	ac.next.clean = false;						   // Turn off any Cleaning options if we can.
 	ac.next.clock = -1;							   // Don't set any current time if we can avoid it.
 	ac.next.power = false;						   // Initially start with the unit off.
+	ac.next.freshAir = stdAc::freshAir_t::kOff;		   // Don't use any fresh/air/ventilation modes if we can.
+	ac.next.voice = false;						   // Don't use any voice control modes if we can.
+	ac.next.smart = false;						   // Don't use any "smart" modes if we can.
+	ac.next.iFeel = false;						   // Don't use any iFeel modes if we can.
+	ac.next.quiet = false;						   // Don't use any quiet/silent/etc modes.
+    ac.next.command = stdAc::ac_command_t::kControlCommand; // Use the standard control command for this message.
 	Serial.println("Try to turn on & off every supported A/C type ...");
 }
 
-void WIFI_setup()
-{
-	WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+void WIFI_setup() {
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 	Serial.println("WiFi connecting...");
 	while (WiFi.status() != WL_CONNECTED)
 	{
@@ -72,68 +77,111 @@ void WIFI_setup()
 	Serial.println("");
 	Serial.println("WiFi connected");
 	Serial.println("IP address: ");
-	Serial.println(WiFi.localIP());
-
-	if (MDNS.begin("esp8266"))
+	Serial.println(WiFi.localIP());    
+    if(MDNS.begin("esp8266"))
 	{
 		Serial.println("MDNS responder started");
 	}
 
 	server.on("/", WIFI_handleRoot);
 	server.onNotFound(WIFI_handleNotFound);
-	server.begin();
-	Serial.println("HTTP server started");
+    server.begin();
 
-	// Add these new handlers inside WIFI_setup()
-	server.on("/pwr_on", []()
-			  {
-  Serial.println("Power ON command received");
-  ac.next.power = true;
-  ac.sendAc();
-  server.send(200, "text/plain", "OK"); });
 
-	server.on("/pwr_off", []()
-			  {
-  Serial.println("Power OFF command received");
-  ac.next.power = false;
-  ac.sendAc();
-  server.send(200, "text/plain", "OK"); });
+    // --- POWER & LIGHTS ---
+    server.on("/pwr_on", [](){ 
+        Serial.println("Power Start");
+        ac.next.power = true; ac.next.command = stdAc::ac_command_t::kPowerCommand; ac.sendAc(); server.send(200); 
+    });
+    server.on("/pwr_off", [](){ 
+        Serial.println("Power Stop");
+        ac.next.power = false; ac.next.command = stdAc::ac_command_t::kPowerCommand; ac.sendAc(); server.send(200); 
+    });
+    server.on("/light_on", [](){ 
+        Serial.println("Light Start");
+        ac.next.light = true; ac.next.command = stdAc::ac_command_t::kLightCommand; ac.sendAc(); server.send(200); 
+    });
+    server.on("/light_off", [](){ 
+        Serial.println("Light Stop");
+        ac.next.light = false; ac.next.command = stdAc::ac_command_t::kLightCommand; ac.sendAc(); server.send(200); 
+    });
 
-	server.on("/tup", []()
-			  {
-  Serial.println("Temperature UP command received");
-  ac.next.degrees = min(ac.next.degrees + 1.0f, 30.0f); // Cap at 30C
-  ac.sendAc();
-  server.send(200, "text/plain", "OK"); });
+    // --- MODES ---
+    server.on("/mode_auto", [](){ Serial.println("Mode: Auto"); ac.next.mode = stdAc::opmode_t::kAuto; ac.next.command = stdAc::ac_command_t::kModeCommand; ac.sendAc(); server.send(200); });
+    server.on("/mode_cool", [](){ Serial.println("Mode: Cool"); ac.next.mode = stdAc::opmode_t::kCool; ac.next.command = stdAc::ac_command_t::kModeCommand; ac.sendAc(); server.send(200); });
+    server.on("/mode_heat", [](){ Serial.println("Mode: Heat"); ac.next.mode = stdAc::opmode_t::kHeat; ac.next.command = stdAc::ac_command_t::kModeCommand; ac.sendAc(); server.send(200); });
+    server.on("/mode_dry", [](){ Serial.println("Mode: Dry"); ac.next.mode = stdAc::opmode_t::kDry; ac.next.command = stdAc::ac_command_t::kModeCommand; ac.sendAc(); server.send(200); });
+    server.on("/mode_fan", [](){ Serial.println("Mode: Fan"); ac.next.mode = stdAc::opmode_t::kFan; ac.next.command = stdAc::ac_command_t::kModeCommand; ac.sendAc(); server.send(200); });
 
-	server.on("/tdown", []()
-			  {
-  Serial.println("Temperature DOWN command received");
-  ac.next.degrees = max(ac.next.degrees - 1.0f, 16.0f); // Floor at 16C
-  ac.sendAc();
-  server.send(200, "text/plain", "OK"); });
+    // --- FAN SPEED ---
+    server.on("/fan_auto", [](){ Serial.println("Fan Speed: Auto"); ac.next.fanspeed = stdAc::fanspeed_t::kAuto; ac.next.command = stdAc::ac_command_t::kFanSpeedCommand; ac.sendAc(); server.send(200); });
+    server.on("/fan_1", [](){ Serial.println("Fan Speed: 1"); ac.next.fanspeed = stdAc::fanspeed_t::kMin; ac.next.command = stdAc::ac_command_t::kFanSpeedCommand; ac.sendAc(); server.send(200); });
+    server.on("/fan_2", [](){ Serial.println("Fan Speed: 2"); ac.next.fanspeed = stdAc::fanspeed_t::kLow; ac.next.command = stdAc::ac_command_t::kFanSpeedCommand; ac.sendAc(); server.send(200); });
+    server.on("/fan_3", [](){ Serial.println("Fan Speed: 3"); ac.next.fanspeed = stdAc::fanspeed_t::kMedium; ac.next.command = stdAc::ac_command_t::kFanSpeedCommand; ac.sendAc(); server.send(200); });
+    server.on("/fan_4", [](){ Serial.println("Fan Speed: 4"); ac.next.fanspeed = stdAc::fanspeed_t::kHigh; ac.next.command = stdAc::ac_command_t::kFanSpeedCommand; ac.sendAc(); server.send(200); });
+    server.on("/fan_5", [](){ Serial.println("Fan Speed: 5"); ac.next.fanspeed = stdAc::fanspeed_t::kMax; ac.next.command = stdAc::ac_command_t::kFanSpeedCommand; ac.sendAc(); server.send(200); });
 
-	// Examples of how you would map the other special functions from the remote:
-	server.on("/eco", []()
-			  { 
-              Serial.println("Economy mode command received");
-              ac.next.econo = true; ac.sendAc(); server.send(200, "text/plain", "OK"); });
-	server.on("/quiet", []()
-			  { Serial.println("Quiet mode command received"); ac.next.quiet = true; ac.next.turbo = false; ac.sendAc(); server.send(200, "text/plain", "OK"); });
-	server.on("/turbo", []()
-			  { Serial.println("Turbo mode command received"); ac.next.quiet = false; ac.next.turbo = true; ac.sendAc(); server.send(200, "text/plain", "OK"); });
+    // --- SWINGS (Toggles) ---
+    server.on("/swingv", [](){ 
+        ac.next.swingv = (ac.next.swingv == stdAc::swingv_t::kOff) ? stdAc::swingv_t::kAuto : stdAc::swingv_t::kOff;
+        Serial.println(ac.next.swingv != stdAc::swingv_t::kOff ? "Vertical Swing Start" : "Vertical Swing Stop");
+        ac.next.command = stdAc::ac_command_t::kSwingVCommand;
+        ac.sendAc(); server.send(200); 
+    });
+    server.on("/swingh", [](){ 
+        ac.next.swingh = (ac.next.swingh == stdAc::swingh_t::kOff) ? stdAc::swingh_t::kAuto : stdAc::swingh_t::kOff;
+        Serial.println(ac.next.swingh != stdAc::swingh_t::kOff ? "Horizontal Swing Start" : "Horizontal Swing Stop");
+        ac.next.command = stdAc::ac_command_t::kSwingHCommand;
+        ac.sendAc(); server.send(200); 
+        ac.sendAc(); server.send(200); 
+    });
 
-	// You may need to look up your specific protocol's swingv_t and swingh_t settings.
-	// This is an example for Louver Vertical toggle:
-	server.on("/louver_v", []()
-			  {
-  Serial.println("Louver Vertical toggle command received");
-  // Simple on/off vertical swing toggle. Your protocol might have positions (e.g. kSwingvTop).
-  ac.next.swingv = (ac.next.swingv == stdAc::swingv_t::kOff) ? stdAc::swingv_t::kAuto : stdAc::swingv_t::kOff;
-  ac.sendAc();
-  server.send(200, "text/plain", "OK"); });
+    // --- FRESH AIR ---
+    server.on("/fresh_off", [](){ Serial.println("Fresh Air Stop"); ac.next.freshAir = stdAc::freshAir_t::kOff; ac.next.command = stdAc::ac_command_t::kFreshAirCommand; ac.sendAc(); server.send(200); });
+    server.on("/fresh_low", [](){ Serial.println("Fresh Air: Low"); ac.next.freshAir = stdAc::freshAir_t::kLow; ac.next.command = stdAc::ac_command_t::kFreshAirCommand; ac.sendAc(); server.send(200); });
+    server.on("/fresh_mid", [](){ Serial.println("Fresh Air: Mid"); ac.next.freshAir = stdAc::freshAir_t::kMedium; ac.next.command = stdAc::ac_command_t::kFreshAirCommand; ac.sendAc(); server.send(200); });
+    server.on("/fresh_high", [](){ Serial.println("Fresh Air: High"); ac.next.freshAir = stdAc::freshAir_t::kMax; ac.next.command = stdAc::ac_command_t::kFreshAirCommand; ac.sendAc(); server.send(200); });
+
+    // --- SPECIAL FUNCTIONS (Toggles) ---
+    server.on("/turbo", [](){ 
+        ac.next.turbo = !ac.next.turbo;
+        ac.next.command = stdAc::ac_command_t::kSuperCommand;
+        Serial.println(ac.next.turbo ? "Turbo Start" : "Turbo Stop");
+        ac.sendAc(); server.send(200); 
+    });
+    server.on("/quiet", [](){ 
+        ac.next.quiet = !ac.next.quiet; 
+        ac.next.command = stdAc::ac_command_t::kQuietCommand;
+        Serial.println(ac.next.quiet ? "Quiet Start" : "Quiet Stop");
+        ac.sendAc(); server.send(200); 
+    });
+    server.on("/voice", [](){ 
+        ac.next.voice = !ac.next.voice; 
+        ac.next.command = stdAc::ac_command_t::kVoiceCommand;
+        Serial.println(ac.next.voice ? "Voice Start" : "Voice Stop");
+        ac.sendAc(); server.send(200); 
+    });
+    server.on("/smart", [](){ 
+        ac.next.smart = !ac.next.smart; 
+        ac.next.command = stdAc::ac_command_t::kSmartCommand;
+        Serial.println(ac.next.smart ? "Smart Start" : "Smart Stop");
+        ac.sendAc(); server.send(200); 
+    });
+    server.on("/sleep", [](){ 
+        ac.next.sleep = (ac.next.sleep == -1) ? 1 : -1; 
+        ac.next.command = stdAc::ac_command_t::kSleepCommand;
+        Serial.println(ac.next.sleep != -1 ? "Sleep Start" : "Sleep Stop");
+        ac.sendAc(); server.send(200); 
+    });
+    server.on("/eco", [](){ 
+        ac.next.econo = !ac.next.econo; 
+        ac.next.command = stdAc::ac_command_t::kEconoCommand;
+        Serial.println(ac.next.econo ? "Eco Start" : "Eco Stop");
+        ac.sendAc(); server.send(200); 
+    });
+    Serial.println("HTTP server started");
+
 }
-
 void setup()
 {
 	Serial.begin(115200);
@@ -146,104 +194,62 @@ void loop()
 	WIFI_loop();
 	MDNS.update();
 }
-void WIFI_handleRoot()
-{
-	String html;
-	html.reserve(4096); // Optimized memory management
+void WIFI_handleRoot() {
+    String html;
+    html.reserve(8192); // Larger buffer for complex UI
 
-	html = F("<!DOCTYPE html><html><head>");
-	html += F("<meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>");
-	html += F("<style>");
-	// Define colors and grid system
-	html += F("body { font-family: sans-serif; background-color: #121212; color: #e0e0e0; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }");
-	html += F(".remote-container { background-color: #1e1e1e; padding: 25px; border-radius: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); width: 320px; }");
-	html += F(".display-panel { background-color: #2c2c2c; border-radius: 10px; padding: 15px; margin-bottom: 20px; text-align: center; }");
-	html += F(".display-label { font-size: 14px; color: #aaa; margin-bottom: 5px; }");
-	html += F(".temp-val { font-size: 56px; font-weight: bold; color: #00e676; }");
+    html = F("<!DOCTYPE html><html><head>");
+    html += F("<meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>");
+    html += F("<style>");
+    html += F("body { font-family: sans-serif; background-color: #121212; color: #e0e0e0; margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }");
+    html += F(".remote-container { background-color: #1e1e1e; padding: 20px; border-radius: 20px; width: 100%; max-width: 360px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }");
+    html += F("h3 { font-size: 11px; color: #666; text-transform: uppercase; margin: 15px 0 8px 5px; border-bottom: 1px solid #333; }");
+    html += F(".grid { display: grid; gap: 8px; margin-bottom: 10px; }");
+    html += F(".g2 { grid-template-columns: 1fr 1fr; }");
+    html += F(".g3 { grid-template-columns: 1fr 1fr 1fr; }");
+    html += F(".g5 { grid-template-columns: repeat(5, 1fr); }");
+    html += F(".btn { background-color: #333; color: #eee; border: none; padding: 12px 2px; border-radius: 8px; font-size: 12px; cursor: pointer; transition: 0.1s; }");
+    html += F(".btn:active { transform: scale(0.95); background-color: #444; }");
+    html += F(".b-on { background-color: #2e7d32; } .b-off { background-color: #c62828; }");
+    html += F("</style></head><body>");
 
-	html += F(".grid-container { display: grid; gap: 15px; grid-template-columns: 1fr 1fr; margin-bottom: 15px; }");
-	html += F(".tri-grid { grid-template-columns: repeat(3, 1fr); gap: 10px; }");
-	html += F(".pwr-grid { grid-template-columns: 1fr 1fr; margin-bottom: 15px; }");
+    html += F("<div class='remote-container'>");
 
-	// Base button style
-	html += F(".btn { background-color: #333; color: #e0e0e0; border: none; padding: 15px; border-radius: 12px; font-size: 16px; cursor: pointer; transition: background 0.2s, transform 0.1s; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 8px; }");
-	html += F(".btn:active { transform: scale(0.95); }");
+    // 1. POWER & LIGHT
+    html += F("<h3>Main Power</h3><div class='grid g2'>");
+    html += F("<button class='btn b-on' onclick='sendCmd(\"pwr_on\")'>ON</button><button class='btn b-off' onclick='sendCmd(\"pwr_off\")'>OFF</button>");
+    html += F("</div><h3>Panel Light</h3><div class='grid g2'>");
+    html += F("<button class='btn' onclick='sendCmd(\"light_on\")'>Light ON</button><button class='btn' onclick='sendCmd(\"light_off\")'>Light OFF</button></div>");
 
-	// Custom button styles from your remote
-	html += F(".btn-on { background-color: #00c853; color: #fff; font-weight: bold; } .btn-on:active { background-color: #009624; }");
-	html += F(".btn-off { background-color: #d32f2f; color: #fff; font-weight: bold; } .btn-off:active { background-color: #9a0007; }");
-	html += F(".btn-eco { color: #81c784; font-size: 20px; font-weight: bold; }"); // Green leaf
-	html += F(".btn-mode { color: #aaa; font-size: 20px; }");					   // Sun/flake
-	html += F(".btn-temp { background-color: #424242; font-size: 24px; font-weight: bold; color: #fff; }");
+    // 2. MODES (5 Buttons)
+    html += F("<h3>Operation Mode</h3><div class='grid g5'>");
+    html += F("<button class='btn' onclick='sendCmd(\"mode_auto\")'>AUTO</button><button class='btn' onclick='sendCmd(\"mode_cool\")'>COOL</button>");
+    html += F("<button class='btn' onclick='sendCmd(\"mode_heat\")'>HEAT</button><button class='btn' onclick='sendCmd(\"mode_dry\")'>DRY</button>");
+    html += F("<button class='btn' onclick='sendCmd(\"mode_fan\")'>FAN</button></div>");
 
-	// Bottom text label buttons (from physical remote labels)
-	html += F(".lbl-btn { border-radius: 8px; font-size: 14px; padding: 10px; background-color: #2c2c2c; text-align: center; color: #aaa; }");
-	html += F(".lbl-btn:active { background-color: #333; }");
-	html += F("</style></head><body>");
+    // 3. FAN SPEED (1-5 + Auto)
+    html += F("<h3>Fan Speed</h3><div class='grid g3'>");
+    html += F("<button class='btn' onclick='sendCmd(\"fan_1\")'>1</button><button class='btn' onclick='sendCmd(\"fan_2\")'>2</button>");
+    html += F("<button class='btn' onclick='sendCmd(\"fan_3\")'>3</button><button class='btn' onclick='sendCmd(\"fan_4\")'>4</button>");
+    html += F("<button class='btn' onclick='sendCmd(\"fan_5\")'>5</button><button class='btn' onclick='sendCmd(\"fan_auto\")'>AUTO</button></div>");
 
-	html += F("<div class='remote-container'>");
+    // 4. SWINGS
+    html += F("<h3>Swing Control</h3><div class='grid g2'>");
+    html += F("<button class='btn' onclick='sendCmd(\"swingv\")'>V. Swing</button><button class='btn' onclick='sendCmd(\"swingh\")'>H. Swing</button></div>");
 
-	// 1. Digital Display (Showing Current State)
-	html += F("<div class='display-panel'>");
-	html += F("<div class='display-label'>TARGET TEMP</div>");
-	html += F("<div class='temp-val'><span id='currTemp'>");
-	html += String((int)ac.next.degrees);
-	html += F("</span>&deg;C</div>");
-	html += F("</div>");
+    // 5. FRESH AIR
+    html += F("<h3>Fresh Air</h3><div class='grid g2'>");
+    html += F("<button class='btn' onclick='sendCmd(\"fresh_off\")'>OFF</button><button class='btn' onclick='sendCmd(\"fresh_low\")'>LOW</button>");
+    html += F("<button class='btn' onclick='sendCmd(\"fresh_mid\")'>MID</button><button class='btn' onclick='sendCmd(\"fresh_high\")'>HIGH</button></div>");
 
-	// 2. Separate ON/OFF Row (Special Request)
-	html += F("<div class='grid-container pwr-grid'>");
-	html += F("<button class='btn btn-on' onclick='sendCmd(\"pwr_on\")'>AC ON</button>");
-	html += F("<button class='btn btn-off' onclick='sendCmd(\"pwr_off\")'>AC OFF</button>");
-	html += F("</div>");
+    // 6. SPECIAL FUNCTIONS
+    html += F("<h3>Special Functions</h3><div class='grid g3'>");
+    html += F("<button class='btn' onclick='sendCmd(\"turbo\")'>Turbo</button><button class='btn' onclick='sendCmd(\"quiet\")'>Quiet</button>");
+    html += F("<button class='btn' onclick='sendCmd(\"voice\")'>Voice</button><button class='btn' onclick='sendCmd(\"smart\")'>Smart</button>");
+    html += F("<button class='btn' onclick='sendCmd(\"sleep\")'>Sleep</button><button class='btn' onclick='sendCmd(\"eco\")'>Eco</button></div>");
 
-	// 3. Mode/Eco and Temperature Row (Grid matching image layout)
-	html += F("<div class='grid-container' style='grid-template-columns: repeat(3, 1fr);'>");
-
-	// Left: Eco (Green Leaf) / Mode (Sun/Flake)
-	html += F("<div style='display:grid; gap:10px;'>");
-	html += F("<button class='btn btn-eco' onclick='sendCmd(\"eco\")'>&#127803;</button>");			// Leaf emoji
-	html += F("<button class='btn btn-mode' onclick='sendCmd(\"mode\")'>&#9728;&#10052;</button>"); // Sun/Flake symbols
-	html += F("</div>");
-
-	// Center: Temp UP/DOWN
-	html += F("<div style='display:grid; gap:10px;'>");
-	html += F("<button class='btn btn-temp' onclick='sendCmd(\"tup\")'>&and;</button>");
-	html += F("<button class='btn btn-temp' onclick='sendCmd(\"tdown\")'>&or;</button>");
-	html += F("</div>");
-
-	// Right: Fan/Turbo (From image)
-	html += F("<div style='display:grid; gap:10px;'>");
-	html += F("<button class='btn btn-mode' onclick='sendCmd(\"fan\")'>&#9881;</button>");	   // Gear for settings/fan
-	html += F("<button class='btn btn-mode' onclick='sendCmd(\"turbo\")'>&#127811;</button>"); // Abstract swirl for turbo/swirl
-	html += F("</div>");
-
-	html += F("</div>"); // End Mode/Temp row
-
-	html += F("<hr style='border:0; border-top:1px solid #333; margin:15px 0;'>");
-
-	// 4. Labeled Rectangular Buttons (Louver Control)
-	html += F("<div class='grid-container tri-grid'>");
-	html += F("<button class='btn lbl-btn' onclick='sendCmd(\"louver_h\")'>Louver H</button>");
-	html += F("<button class='btn lbl-btn' onclick='sendCmd(\"louver_a\")'>Louver A</button>");
-	html += F("<button class='btn lbl-btn' onclick='sendCmd(\"louver_v\")'>Louver V</button>");
-	html += F("</div>");
-
-	// 5. Special Functions Row (Boost/Vacation/Quiet)
-	html += F("<div class='grid-container tri-grid'>");
-	html += F("<button class='btn lbl-btn' style='color:#ffc107;' onclick='sendCmd(\"boost\")'>Boost</button>");	   // Yellow for boost
-	html += F("<button class='btn lbl-btn' style='color:#03a9f4;' onclick='sendCmd(\"vacation\")'>Vacation</button>"); // Blue for vacation
-	html += F("<button class='btn lbl-btn' style='color:#9e9e9e;' onclick='sendCmd(\"quiet\")'>Quiet</button>");	   // Grey for quiet
-	html += F("</div>");
-
-	html += F("</div>"); // End main container
-
-	// Optimized fetch JS
-	html += F("<script>");
-	html += F("function sendCmd(path) { fetch('/' + path); }");
-	html += F("</script></body></html>");
-
-	server.send(200, "text/html", html);
+    html += F("</div><script>function sendCmd(p){fetch('/'+p);}</script></body></html>");
+    server.send(200, "text/html", html);
 }
 void WIFI_handleNotFound()
 {

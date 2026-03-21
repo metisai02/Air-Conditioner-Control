@@ -1803,6 +1803,17 @@ void IRac::kelon(IRKelonAc *ac, const bool togglePower,
 /*Todo: add new feature for KELON168 */
 #endif  // SEND_KELON
 #if SEND_KELON168
+#ifdef DEBUG_KELON168
+#define DEBUG_PRINT_HEX(label) do { \
+  Serial.print(label); \
+  uint8_t* raw = ac->getRaw(); \
+  for(int i = 0; i < kKelon168StateLength; i++) { \
+    Serial.printf("%02X", raw[i]); \
+  } \
+  Serial.println(); \
+} while(0)
+#endif
+
 /// Send a Kelon168 A/C message with the supplied settings.
 /// @param[in, out] ac A Ptr to an IRKelon168Ac object to use.
 /// @param[in] togglePower Whether to toggle the unit's power
@@ -1821,27 +1832,96 @@ void IRac::kelon168(IRKelon168Ac *ac,stdAc::ac_command_t command, const bool Pow
                  const int16_t sleep, const int16_t clock, const bool smart, 
                  const bool eco, const bool quiet, const bool voice) {
   ac->begin();
-  /*Todo: will be implemented remaining features for KELON168 */
+  Serial.println("\n=== KELON168 DEBUG START ===");
+  Serial.printf("RECEIVED PARAMETERS - Command: %d, Power: %d (SHOULD BE 1), Mode: %d\n", (int)command, (int)Power, (int)mode);
+  Serial.printf("Temp: %.1f, Fan: %d, Turbo: %d, Light: %d\n", degrees, (int)fan, (int)turbo, (int)light);
   
   ac->setPowerTemp(Power);
+#ifdef DEBUG_KELON168
+  DEBUG_PRINT_HEX("After setPowerTemp: 0x");
+#endif
+
   ac->setMode(IRKelon168Ac::convertMode(mode));
+
+#ifdef DEBUG_KELON168
+  DEBUG_PRINT_HEX("After setMode: 0x");
+#endif
   ac->setFan(IRKelon168Ac::convertFan(fan));
+
+#ifdef DEBUG_KELON168
+  DEBUG_PRINT_HEX("After setFan: 0x");
+#endif
   ac->setTemp(static_cast<uint8_t>(degrees));
+  
+#ifdef DEBUG_KELON168
+  DEBUG_PRINT_HEX("After setTemp: 0x");
+#endif
+  
   ac->setSleep(sleep >= 0);
+  
+#ifdef DEBUG_KELON168
+  DEBUG_PRINT_HEX("After setSleep: 0x");
+#endif
+  
   ac->setSuper(turbo);
+  
+#ifdef DEBUG_KELON168
+  DEBUG_PRINT_HEX("After setSuper: 0x");
+#endif
+  
   ac->setLight(light);
+
+#ifdef DEBUG_KELON168
+  DEBUG_PRINT_HEX("After setLight: 0x");
+#endif
+  
   ac->setSwingVertical(swingv != stdAc::swingv_t::kOff);
+#ifdef DEBUG_KELON168
+  DEBUG_PRINT_HEX("After setSwingVertical: 0x");
+#endif
+  
   ac->setSwingHorizontal(swingh != stdAc::swingh_t::kOff);
+#ifdef DEBUG_KELON168
+  DEBUG_PRINT_HEX("After setSwingHorizontal: 0x");
+#endif
+  
   if (clock >= 0) ac->setClock(clock);
+#ifdef DEBUG_KELON168
+  DEBUG_PRINT_HEX("After setClock: 0x");
+#endif
+  
   ac->setSmartMode(smart);
+#ifdef DEBUG_KELON168
+  DEBUG_PRINT_HEX("After setSmartMode: 0x");
+#endif
+  
   ac->setEcoMode(eco);
+#ifdef DEBUG_KELON168
+  DEBUG_PRINT_HEX("After setEcoMode: 0x");
+#endif
+  
   ac->setQuietMode(quiet);
+#ifdef DEBUG_KELON168
+  DEBUG_PRINT_HEX("After setQuietMode: 0x");
+#endif
+  
   ac->setVoiceMode(voice);
+#ifdef DEBUG_KELON168
+  DEBUG_PRINT_HEX("After setVoiceMode: 0x");
+#endif
+  
   if(command != stdAc::ac_command_t::kModeCommand)
   {
     ac->setCommand(IRKelon168Ac::convertKeyCodeCommand(command));
+#ifdef DEBUG_KELON168
+    DEBUG_PRINT_HEX("After setCommand: 0x");
+#endif
   }
 
+#ifdef DEBUG_KELON168
+  DEBUG_PRINT_HEX("Final Raw Data: 0x");
+#endif
+  Serial.println("=== KELON168 DEBUG END ===\n");
   ac->send();
 }
 #endif
@@ -3011,13 +3091,14 @@ stdAc::state_t IRac::handleToggles(const stdAc::state_t desired,
         break;
       case decode_type_t::KELON:
       /*todo: add new features for KELON */
-      case decode_type_t::KELON168:
         if ((desired.swingv == stdAc::swingv_t::kOff) ^
             (prev->swingv == stdAc::swingv_t::kOff))  // It changed, so toggle.
           result.swingv = stdAc::swingv_t::kAuto;
         else
           result.swingv = stdAc::swingv_t::kOff;  // No change, so no toggle.
         // FALL-THRU
+      case decode_type_t::KELON168:
+          break;
       case decode_type_t::AIRWELL:
       case decode_type_t::DAIKIN64:
       case decode_type_t::PANASONIC_AC32:

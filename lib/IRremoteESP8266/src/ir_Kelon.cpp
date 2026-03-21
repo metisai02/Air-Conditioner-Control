@@ -1075,6 +1075,9 @@ uint8_t IRKelon168Ac::convertKeyCodeCommand(const stdAc::ac_command_t code)
     return kKelon168CommandEcoMode;
   case stdAc::ac_command_t::kLightCommand:
     return kKelon168CommandLight;
+  case stdAc::ac_command_t::kControlCommand:
+  /*Need to verify in real hardware */
+    return 0;
   default:
     return kKelon168CommandUnknown;
   }
@@ -1193,7 +1196,7 @@ stdAc::state_t IRKelon168Ac::toCommon(const stdAc::state_t *prev) const {
   }
   result.protocol = decode_type_t::KELON168;
   result.model = getModel();
-  if (_.tm_isClickpowerOn) result.power = _.isPowerOn;
+  result.power = _.isPowerOn;
   result.mode = toCommonMode(_.st_mode);
   result.celsius = true;
   result.degrees = getTemp();
@@ -1221,7 +1224,7 @@ String IRKelon168Ac::toString(void) const {
   String result = "";
   result.reserve(200);  // Reserve some heap for the string to reduce fragging.
   result += addModelToString(decode_type_t::KELON168, getModel(), false);
-  result += addBoolToString(_.tm_isClickpowerOn, kPowerToggleStr);
+  result += addBoolToString(_.isPowerOn, kPowerStr);
   result += addModeToString(_.st_mode, kKelon168Auto, kKelon168Cool,
                             kKelon168Heat, kKelon168Dry, kKelon168Fan);
   result += addTempToString(getTemp());

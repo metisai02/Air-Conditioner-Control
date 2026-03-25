@@ -313,7 +313,7 @@ class IRKelon168Ac {
   void begin(void);
   void stateReset(void);
   /*Need to adjust*/
-  void setPowerTemp(const bool on);
+  void setPower(const bool on);
   bool getPowerTemp(void) const;
   // void setPower(const bool on);
   // bool getPower(void) const;

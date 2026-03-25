@@ -978,7 +978,7 @@ void IRKelon168Ac::enableOnTimer(const bool on) {
 
 /// Change the power setting.
 /// @param[in] on true, the setting is on. false, the setting is off.
-void IRKelon168Ac::setPowerTemp(const bool on) {
+void IRKelon168Ac::setPower(const bool on) {
   _.tm_isClickpowerOn = true;
   _.isPowerOn = on;
   setSuper(false);  // Changing power cancels Super/Jet mode.

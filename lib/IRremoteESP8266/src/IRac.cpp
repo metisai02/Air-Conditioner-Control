@@ -1836,9 +1836,9 @@ void IRac::kelon168(IRKelon168Ac *ac,stdAc::ac_command_t command, const bool Pow
   Serial.printf("RECEIVED PARAMETERS - Command: %d, Power: %d (SHOULD BE 1), Mode: %d\n", (int)command, (int)Power, (int)mode);
   Serial.printf("Temp: %.1f, Fan: %d, Turbo: %d, Light: %d\n", degrees, (int)fan, (int)turbo, (int)light);
   
-  ac->setPowerTemp(Power);
+  ac->setPower(Power);
 #ifdef DEBUG_KELON168
-  DEBUG_PRINT_HEX("After setPowerTemp: 0x");
+  DEBUG_PRINT_HEX("After setPower: 0x");
 #endif
 
   ac->setMode(IRKelon168Ac::convertMode(mode));

@@ -177,7 +177,7 @@ union Kelon168Protocol {
     // Byte 5
     uint8_t st_isNoDraft: 1;
     uint8_t : 1;
-    uint8_t st_isClickHorizontalWindDirection: 1;
+    uint8_t : 1;
     uint8_t st_freshAir: 1;
     /*Take from old libary*/
     uint8_t Super1  :1;
@@ -196,7 +196,7 @@ union Kelon168Protocol {
     uint8_t OffHours : 5;
     uint8_t : 1;
     uint8_t st_isClickVerticalWindDirection: 1;
-    uint8_t : 1;
+    uint8_t st_isClickHorizontalWindDirection :1 ;
     // Byte 9
     uint8_t OffMins : 6;
     uint8_t : 1;
@@ -328,9 +328,9 @@ class IRKelon168Ac {
   uint8_t getFan(void) const;
   void setMode(const uint8_t mode);
   uint8_t getMode(void) const;
-  void setSwingVertical(const bool on);
+  void setToggleSwingVertical(const stdAc::ac_command_t code);
   bool getSwingVertical(void) const;
-  void setSwingHorizontal(const bool on);
+  void setToggleSwingHorizontal(const stdAc::ac_command_t code);
   bool getSwingHorizontal(void) const;
   void setLight(const bool on);
   bool getLight(void) const;

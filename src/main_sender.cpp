@@ -88,22 +88,21 @@ void WIFI_setup() {
 
     // --- TEMPERATURE CONTROLS ---
     server.on("/tup", [](){ 
-        if(ac.next.degrees < 30) {
-            ac.next.degrees++;
-            ac.next.command = stdAc::ac_command_t::kTempCommand;
-            Serial.printf("Temp Increased: %d°C\n", (int)ac.next.degrees);
-            ac.sendAc();
-        }
+        ac.next.degrees++;
+        if(ac.next.degrees > 30) ac.next.degrees = 30; // Cap at 30C for safety
+        Serial.printf("Temp Increased: %d°C\n", (int)ac.next.degrees);
+        ac.next.command = stdAc::ac_command_t::kTempCommand;
+        ac.sendAc();
         server.send(200); 
     });
 
     server.on("/tdown", [](){ 
-        if(ac.next.degrees > 16) {
-            ac.next.degrees--;
-            ac.next.command = stdAc::ac_command_t::kTempCommand;
-            Serial.printf("Temp Decreased: %d°C\n", (int)ac.next.degrees);
-            ac.sendAc();
-        }
+        ac.next.degrees--;
+        if(ac.next.degrees < 16) ac.next.degrees = 16; //
+        ac.next.degrees = 16;
+        ac.next.command = stdAc::ac_command_t::kTempCommand;
+        Serial.printf("Temp Decreased: %d°C\n", (int)ac.next.degrees);
+        ac.sendAc();
         server.send(200); 
     });
 
@@ -178,7 +177,6 @@ void WIFI_setup() {
 
     // --- AIRFLOW (Swings & Fresh Air) ---
     server.on("/swingv", [](){ 
-        ac.next.swingv = (ac.next.swingv == stdAc::swingv_t::kOff) ? stdAc::swingv_t::kAuto : stdAc::swingv_t::kOff;
         ac.next.command = stdAc::ac_command_t::kSwingVCommand;
 #ifdef DEBUG_KELON168
         Serial.println(ac.next.swingv != stdAc::swingv_t::kOff ? "V. Swing Start" : "V. Swing Stop");
@@ -186,7 +184,6 @@ void WIFI_setup() {
         ac.sendAc(); server.send(200); 
     });
     server.on("/swingh", [](){ 
-        ac.next.swingh = (ac.next.swingh == stdAc::swingh_t::kOff) ? stdAc::swingh_t::kAuto : stdAc::swingh_t::kOff;
         ac.next.command = stdAc::ac_command_t::kSwingHCommand;
 #ifdef DEBUG_KELON168
         Serial.println(ac.next.swingh != stdAc::swingh_t::kOff ? "H. Swing Start" : "H. Swing Stop");

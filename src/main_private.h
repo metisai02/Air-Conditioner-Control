@@ -6,7 +6,7 @@
 
 
 /****************WIFI SETTINGS**************** */
-#define WIFI_SSID "Metisai"
-#define WIFI_PASSWORD "Lequynga1@"
+#define WIFI_SSID "iPhoneNga"
+#define WIFI_PASSWORD "1234567890"
 
 #endif // MAIN_PRIVATE_H

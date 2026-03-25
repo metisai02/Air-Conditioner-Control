@@ -1875,12 +1875,12 @@ void IRac::kelon168(IRKelon168Ac *ac,stdAc::ac_command_t command, const bool Pow
   DEBUG_PRINT_HEX("After setLight: 0x");
 #endif
   
-  ac->setSwingVertical(swingv != stdAc::swingv_t::kOff);
+  ac->setToggleSwingVertical(command);
 #ifdef DEBUG_KELON168
   DEBUG_PRINT_HEX("After setSwingVertical: 0x");
 #endif
   
-  ac->setSwingHorizontal(swingh != stdAc::swingh_t::kOff);
+  ac->setToggleSwingHorizontal(command);
 #ifdef DEBUG_KELON168
   DEBUG_PRINT_HEX("After setSwingHorizontal: 0x");
 #endif

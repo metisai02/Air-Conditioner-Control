@@ -844,9 +844,17 @@ bool IRKelon168Ac::getVoiceMode(void) const
 }
 /// Set the (vertical) swing setting of the A/C.
 /// @param[in] on true, the setting is on. false, the setting is off.
-void IRKelon168Ac::setSwingVertical(const bool on) {
-  _.st_isClickVerticalWindDirection = on;
-  _.tm_winDirection = on;
+void IRKelon168Ac::setToggleSwingVertical(const stdAc::ac_command_t code) {
+  if(code == stdAc::ac_command_t::kSwingVCommand)
+  {
+    _.st_isClickVerticalWindDirection = true;
+    _.tm_winDirection = true;
+  }
+  else
+  {
+    _.st_isClickVerticalWindDirection = false;
+    _.tm_winDirection = false;
+  }
 }
 
 void IRKelon168Ac::setQuietMode(const bool quietMode) {
@@ -871,13 +879,22 @@ bool IRKelon168Ac::getEcoMode(void) const {
 /// Get the (vertical) swing setting of the A/C.
 /// @return true, the setting is on. false, the setting is off.
 bool IRKelon168Ac::getSwingVertical(void) const {
-  return _.tm_winDirection && _.st_isClickVerticalWindDirection;
+  return _.st_isClickHorizontalWindDirection;
 }
 /// Set the (horizontal) swing setting of the A/C.
 /// @param[in] on true, the setting is on. false, the setting is off.
-void IRKelon168Ac::setSwingHorizontal(const bool on) {
-  _.st_isClickHorizontalWindDirection = on;
-  _.tm_winDirection = on;
+void IRKelon168Ac::setToggleSwingHorizontal(const stdAc::ac_command_t code) {
+
+  if(code == stdAc::ac_command_t::kSwingHCommand)
+  {
+    _.tm_winDirection = false;
+    _.st_isClickHorizontalWindDirection = true;
+  }
+  else
+  {
+    _.tm_winDirection = false;
+    _.st_isClickHorizontalWindDirection = false;
+  }
 }
 
 /// Get the (horizontal) swing setting of the A/C.
